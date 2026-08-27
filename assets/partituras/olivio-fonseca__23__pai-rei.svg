@@ -1,0 +1,271 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+	"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	color="black"
+	width="816.00px" height="158.00px">
+<style type="text/css">
+.fill {fill: currentColor}
+.stroke {stroke: currentColor; fill: none}
+text{white-space:pre; fill:currentColor}
+</style>
+<title>/var/folders/1h/l9f7pgjn5mgc2xg2jgvvjsp40000gn/T/tmpw1fxv757/h.abc (1) tune 1</title>
+<!-- Creator: abcm2ps-8.14.18 -->
+<!-- CreationDate: Aug 27, 2026 16:27 -->
+<!-- CommandLine: -g -O /var/folders/1h/l9f7pgjn5mgc2xg2jgvvjsp40000gn/T/tmpw1fxv757/p - /var/folders/1h/l9f7pgjn5mgc2xg2jgvvjsp40000gn/T/tmpw1fxv757/h.abc -->
+<g stroke-width="0.70">
+<path class="stroke" stroke-width="1"
+	d="M142.20 60.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M322.80 60.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M458.80 60.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M639.40 60.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M747.80 60.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M743.80 60.00v-24.00"/>
+<path d="m67.20 60.00
+	h681.60
+	M67.20 54.00
+	h681.60
+	M67.20 48.00
+	h681.60
+	M67.20 42.00
+	h681.60
+	M67.20 36.00
+	h681.60
+	" class="stroke"/>
+</g>
+<g stroke-width="0.70" style="font:12.00px Helvetica">
+<text x="153.20" y="23.60">D</text>
+<text x="253.20" y="23.60">A7</text>
+<text x="333.90" y="23.60">D</text>
+<text x="465.70" y="23.60">Bm7</text>
+<text x="647.80" y="23.60">A7</text>
+<defs>
+<path id="utclef" class="fill" d="m-50 -90
+	c-72 -41 -72 -158 52 -188
+	150 -10 220 188 90 256
+	-114 52 -275 0 -293 -136
+	-15 -181 93 -229 220 -334
+	88 -87 79 -133 62 -210
+	-51 33 -94 105 -89 186
+	17 267 36 374 49 574
+	6 96 -19 134 -77 135
+	-80 1 -126 -93 -61 -133
+	85 -41 133 101 31 105
+	23 17 92 37 90 -92
+	-10 -223 -39 -342 -50 -617
+	0 -90 0 -162 96 -232
+	56 72 63 230 22 289
+	-74 106 -257 168 -255 316
+	9 153 148 185 252 133
+	86 -65 29 -192 -80 -176
+	-71 12 -105 67 -59 124"/>
+<use id="tclef" transform="translate(0,6) scale(0.045)"
+	xlink:href="#utclef"/>
+</defs>
+<use x="79.20" y="54.00" xlink:href="#tclef"/>
+<g style="font:bold 16px serif"
+	transform="translate(97.70,59.50) scale(1.2,1)">
+	<text text-anchor="middle">4</text>
+	<text y="-12" text-anchor="middle">4</text>
+</g>
+<defs>
+<ellipse id="hd" rx="4.1" ry="2.9"
+	transform="rotate(-20)" class="fill"/>
+</defs>
+<use x="115.70" y="51.00" xlink:href="#hd"/>
+<path d="M119.20 51.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M160.20 41.80l25.60 0.00v3.20l-25.60 -0.00"/>
+<use x="157.00" y="63.00" xlink:href="#hd"/>
+<path d="M160.50 63.00v-20.20" class="stroke"/>
+<use x="182.00" y="63.00" xlink:href="#hd"/>
+<path d="M185.50 63.00v-20.20" class="stroke"/>
+<defs>
+<path id="r8e" class="fill" d="m 0 0
+	c-1.5 1.5 -2.4 2 -3.6 2
+	2.4 -2.8 -2.8 -4 -2.8 -1.2
+	c0 2.7 4.3 2.4 5.9 0.6"/>
+<g id="r8">
+	<path d="m3.3 -4l-3.4 9.6" class="stroke"/>
+	<use x="3.4" y="-4" xlink:href="#r8e"/>
+</g>
+</defs>
+<use x="207.00" y="48.00" xlink:href="#r8"/>
+<use x="231.90" y="63.00" xlink:href="#hd"/>
+<path d="M235.40 63.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M235.40 42.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="259.70" y="60.00" xlink:href="#hd"/>
+<circle class="fill" cx="267.40" cy="57.00" r="1.2"/>
+<path d="M263.20 60.00v-21.00" class="stroke"/>
+<use x="304.30" y="63.00" xlink:href="#hd"/>
+<path d="M307.80 63.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M307.80 42.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="337.70" y="51.00" xlink:href="#hd"/>
+<path d="M341.20 51.00v-21.00" class="stroke"/>
+<defs>
+<path id="Hd" class="fill" d="m3 -1.6
+	c-1 -1.8 -7 1.4 -6 3.2
+	1 1.8 7 -1.4 6 -3.2
+	m0.5 -0.3
+	c2 3.8 -5 7.6 -7 3.8
+	-2 -3.8 5 -7.6 7 -3.8"/>
+</defs>
+<use x="376.90" y="57.00" xlink:href="#Hd"/>
+<path d="M380.40 57.00v-21.00" class="stroke"/>
+<use x="432.30" y="51.00" xlink:href="#hd"/>
+<path d="M435.80 51.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M476.80 41.80l25.60 0.00v3.20l-25.60 -0.00"/>
+<use x="473.70" y="63.00" xlink:href="#hd"/>
+<path d="M477.20 63.00v-20.20" class="stroke"/>
+<use x="498.60" y="63.00" xlink:href="#hd"/>
+<path d="M502.10 63.00v-20.20" class="stroke"/>
+<use x="523.60" y="48.00" xlink:href="#r8"/>
+<use x="548.60" y="63.00" xlink:href="#hd"/>
+<path d="M552.10 63.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M552.10 42.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="576.30" y="60.00" xlink:href="#hd"/>
+<circle class="fill" cx="584.00" cy="57.00" r="1.2"/>
+<path d="M579.80 60.00v-21.00" class="stroke"/>
+<use x="621.00" y="63.00" xlink:href="#hd"/>
+<path d="M624.50 63.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M624.50 42.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<defs>
+<path id="hl" class="stroke" d="m-6 0h12"/>
+</defs>
+<use x="654.30" y="66.00" xlink:href="#hl"/>
+<use x="654.30" y="72.00" xlink:href="#hl"/>
+<use x="654.30" y="72.00" xlink:href="#Hd"/>
+<circle class="fill" cx="663.00" cy="69.00" r="1.2"/>
+<path d="M657.80 72.00v-24.00" class="stroke"/>
+<use x="717.40" y="51.00" xlink:href="#hd"/>
+<path d="M720.90 51.00v-21.00" class="stroke"/>
+</g>
+<g stroke-width="0.70" style="font:12.00px Helvetica">
+<defs>
+<g id="rdots" class="fill">
+	<circle cx="0" cy="-9" r="1.2"/>
+	<circle cx="0" cy="-15" r="1.2"/>
+</g>
+</defs>
+<use x="106.20" y="135.00" xlink:href="#rdots"/>
+<path class="stroke" stroke-width="1"
+	d="M101.20 135.00v-24.00"/>
+<path class="stroke" stroke-width="3"
+	d="M96.70 135.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M282.90 135.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M415.80 135.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M563.00 135.00v-24.00"/>
+<path class="stroke" stroke-width="3"
+	d="M676.40 135.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M670.90 135.00v-24.00"/>
+<use x="666.90" y="135.00" xlink:href="#rdots"/>
+<path class="stroke" stroke-width="3"
+	d="M747.30 135.00v-24.00"/>
+<path class="stroke" stroke-width="1"
+	d="M741.80 135.00v-24.00"/>
+<path d="m67.20 135.00
+	h681.60
+	M67.20 129.00
+	h681.60
+	M67.20 123.00
+	h681.60
+	M67.20 117.00
+	h681.60
+	M67.20 111.00
+	h681.60
+	" class="stroke"/>
+<text x="117.00" y="98.60">D</text>
+<text x="214.70" y="98.60">A7</text>
+<text x="293.70" y="98.60">D</text>
+<text x="422.50" y="98.60">G/B</text>
+<text x="493.20" y="98.60">A/C♯</text>
+<text x="581.60" y="98.60">D</text>
+<text x="695.60" y="98.60">D</text>
+</g>
+<g stroke-width="0.70" style="font:13.00px Times">
+<text x="568.00" y="96.40">1</text>
+<path class="stroke"
+	d="M564.00 85.00m0 20v-20h105.90v20"/>
+<text x="681.90" y="96.40">2</text>
+<path class="stroke"
+	d="M677.90 85.00m0 20v-20h70.90v20"/>
+<use x="79.20" y="129.00" xlink:href="#tclef"/>
+<path class="fill"
+	d="M124.00 116.80l25.10 0.00v3.20l-25.10 -0.00"/>
+<use x="120.80" y="138.00" xlink:href="#hd"/>
+<path d="M124.30 138.00v-20.20" class="stroke"/>
+<use x="145.20" y="138.00" xlink:href="#hd"/>
+<path d="M148.70 138.00v-20.20" class="stroke"/>
+<use x="169.60" y="123.00" xlink:href="#r8"/>
+<use x="194.10" y="138.00" xlink:href="#hd"/>
+<path d="M197.60 138.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M197.60 117.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="221.20" y="135.00" xlink:href="#hd"/>
+<circle class="fill" cx="228.90" cy="132.00" r="1.2"/>
+<path d="M224.70 135.00v-21.00" class="stroke"/>
+<use x="264.80" y="138.00" xlink:href="#hd"/>
+<path d="M268.30 138.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M268.30 117.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="297.50" y="126.00" xlink:href="#hd"/>
+<path d="M301.00 126.00v-21.00" class="stroke"/>
+<use x="335.80" y="132.00" xlink:href="#Hd"/>
+<path d="M339.30 132.00v-21.00" class="stroke"/>
+<use x="390.00" y="126.00" xlink:href="#hd"/>
+<path d="M393.50 126.00v-21.00" class="stroke"/>
+<use x="430.50" y="138.00" xlink:href="#hd"/>
+<circle class="fill" cx="438.20" cy="138.00" r="1.2"/>
+<path d="M434.00 138.00v-21.00" class="stroke"/>
+<use x="474.10" y="138.00" xlink:href="#hd"/>
+<path d="M477.60 138.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M477.60 117.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="501.20" y="135.00" xlink:href="#hd"/>
+<circle class="fill" cx="508.90" cy="132.00" r="1.2"/>
+<path d="M504.70 135.00v-21.00" class="stroke"/>
+<use x="544.90" y="132.00" xlink:href="#hd"/>
+<path d="M548.40 132.00v-21.00" class="stroke"/>
+<path class="fill"
+	d="M548.40 111.00c0.6 5.6 9.6 9 5.6 18.4
+	1.6 -6 -1.3 -11.6 -5.6 -12.8
+"/>
+<use x="585.50" y="138.00" xlink:href="#Hd"/>
+<circle class="fill" cx="594.20" cy="138.00" r="1.2"/>
+<path d="M589.00 138.00v-21.00" class="stroke"/>
+<use x="647.10" y="126.00" xlink:href="#hd"/>
+<path d="M650.60 126.00v-21.00" class="stroke"/>
+<use x="699.40" y="138.00" xlink:href="#Hd"/>
+<circle class="fill" cx="708.10" cy="138.00" r="1.2"/>
+<path d="M702.90 138.00v-21.00" class="stroke"/>
+</g>
+</svg>
