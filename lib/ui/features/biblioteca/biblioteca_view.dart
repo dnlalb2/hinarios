@@ -7,6 +7,8 @@ import '../../../domain/models/hino.dart';
 import '../../core/preferencias_view_model.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
+import '../hino/hino_view.dart';
+import '../hino/hino_view_model.dart';
 import '../configuracao/configuracao_view.dart';
 import 'biblioteca_view_model.dart';
 
@@ -52,7 +54,26 @@ class BibliotecaView extends StatelessWidget {
           ),
           Expanded(
             child: vm.emBusca || vm.soFavoritos
-                ? ListView(children: [for (final h in vm.resultados) BlocoHino(hino: h)])
+                ? ListView(
+                    children: [
+                      for (final h in vm.resultados)
+                        InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChangeNotifierProvider(
+                                create: (_) => HinoViewModel(
+                                  hinos: context.read<HinosRepository>(),
+                                  hino: h,
+                                ),
+                                child: const HinoView(),
+                              ),
+                            ),
+                          ),
+                          child: BlocoHino(hino: h),
+                        ),
+                    ],
+                  )
                 : _arvore(context, vm.grupos),
           ),
         ],
@@ -77,8 +98,8 @@ class BibliotecaView extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider.value(
-                        value: HinarioViewModel(
+                      builder: (_) => ChangeNotifierProvider(
+                        create: (_) => HinarioViewModel(
                           hinos: context.read<HinosRepository>(),
                           urlhinario: grupos[autor]![hinario]!.first.urlhinario,
                           autor: autor,
