@@ -7,6 +7,7 @@ import 'data/services/preferencias_service.dart';
 import 'ui/core/preferencias_view_model.dart';
 import 'ui/core/tema.dart';
 import 'ui/features/biblioteca/biblioteca_view.dart';
+import 'ui/features/biblioteca/biblioteca_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,9 @@ class HinariosApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: preferencias),
         Provider<HinosRepository>.value(value: hinosRepository),
+        ChangeNotifierProvider<BibliotecaViewModel>(
+          create: (_) => BibliotecaViewModel(hinos: hinosRepository, preferencias: preferencias),
+        ),
       ],
       child: Consumer<PreferenciasViewModel>(
         builder: (context, s, _) => MaterialApp(

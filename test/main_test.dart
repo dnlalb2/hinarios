@@ -11,6 +11,7 @@ void main() {
   testWidgets('app inicia com os providers', (tester) async {
     final preferencias = PreferenciasViewModel(service: PreferenciasService());
     final hinosRepo = HinosRepository(service: HinosService());
+    await tester.runAsync(() => hinosRepo.carregar()); // main() também carrega antes do runApp
     await tester.pumpWidget(
       HinariosApp(preferencias: preferencias, hinosRepository: hinosRepo),
     );
