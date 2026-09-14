@@ -53,4 +53,21 @@ void main() {
     expect(vm2.favoritos, contains('z'));
     expect(vm2.deslocamentoDe('z'), 3);
   });
+
+  // M4: preferência corrompida não pode derrubar a inicialização (main()
+  // aguarda restaurar() antes do runApp → tela preta).
+  test('toms malformado vira defaults em vez de exceção', () async {
+    SharedPreferences.setMockInitialValues({'hinario.toms': '{não é json'});
+    final p = await PreferenciasService().restaurar();
+    expect(p.deslocamentos, isEmpty);
+    expect(p.tamanhoFonte, 16);
+  });
+
+  test('fonte fora da faixa é limitada a 12..28 (Slider não estoura)', () async {
+    SharedPreferences.setMockInitialValues({'hinario.fonte': 999.0});
+    expect((await PreferenciasService().restaurar()).tamanhoFonte, 28);
+
+    SharedPreferences.setMockInitialValues({'hinario.fonte': 2.0});
+    expect((await PreferenciasService().restaurar()).tamanhoFonte, 12);
+  });
 }

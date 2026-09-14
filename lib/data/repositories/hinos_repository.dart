@@ -10,14 +10,27 @@ class HinosRepository {
 
   final HinosService _service;
   List<Hino>? _hinos;
+  /// Índice de busca (nome+autor+hinário+letra+tom, minúsculo) construído uma
+  /// única vez em [carregar]. Sem ele, cada tecla digitada reconstruía ~3,4 MB
+  /// de strings para os 3087 hinos.
+  List<String>? _indice;
 
   Future<List<Hino>> carregar() async {
     if (_hinos != null) return _hinos!;
     final texto = await _service.carregarJson();
     final lista = jsonDecode(texto) as List<dynamic>;
     _hinos = [for (final item in lista) Hino.fromJson(item as Map<String, dynamic>)];
+    _indice = [for (final h in _hinos!) _textoDeBusca(h)];
     return _hinos!;
   }
+
+  String _textoDeBusca(Hino h) => [
+        h.nome,
+        h.autor,
+        h.hinario,
+        h.letra,
+        if (h.cifra != null) h.cifra!.tom,
+      ].join(' ').toLowerCase();
 
   Map<String, Map<String, List<Hino>>> agrupar() {
     // 1. Identidade do hinário = urlhinario (hinos sem url: o nome).
@@ -89,13 +102,12 @@ class HinosRepository {
   List<Hino> buscar(String query) {
     final tokens = query.toLowerCase().split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
     if (tokens.isEmpty) return _hinos!;
-    return _hinos!.where((h) {
-      final alvo = [
-        h.nome, h.autor, h.hinario, h.letra,
-        if (h.cifra != null) h.cifra!.tom,
-      ].join(' ').toLowerCase();
-      return tokens.every(alvo.contains);
-    }).toList();
+    final hinos = _hinos!;
+    final indice = _indice!;
+    return [
+      for (var i = 0; i < hinos.length; i++)
+        if (tokens.every(indice[i].contains)) hinos[i],
+    ];
   }
 
   /// Chave de agrupamento do hino: urlhinario, ou o nome quando a url é vazia.

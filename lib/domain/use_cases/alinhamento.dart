@@ -9,7 +9,14 @@ List<LinhaHino> alinhar(String letra, String textoCifra) {
   final linhas = letra.isEmpty
       ? const <String>[]
       : letra.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
-  final compassos = textoCifra.replaceAll('\r', '').split(';').map((c) => c.trim()).toList();
+  // Compasso vazio (só espaços) vira '' para a detecção de vazio; compasso
+  // não vazio preserva o texto original — o whitespace inicial codifica a
+  // coluna do acorde (76% dos compassos do acervo começam com espaço).
+  final compassos = textoCifra
+      .replaceAll('\r', '')
+      .split(';')
+      .map((c) => c.trim().isEmpty ? '' : c)
+      .toList();
 
   List<LinhaHino> pares;
   if (compassos.length == linhas.length) {

@@ -40,12 +40,34 @@ class PreferenciasService {
 
   Future<Preferencias> restaurar() async {
     final p = await SharedPreferences.getInstance();
-    final toms = jsonDecode(p.getString('hinario.toms') ?? '{}') as Map<String, dynamic>;
     return Preferencias(
       temaEscuro: p.getBool('hinario.tema') ?? false,
-      tamanhoFonte: p.getDouble('hinario.fonte') ?? 16,
+      tamanhoFonte: _fonteValida(p.getDouble('hinario.fonte')),
       favoritos: (p.getStringList('hinario.favoritos') ?? []).toSet(),
-      deslocamentos: toms.map((k, v) => MapEntry(k, (v as num).toInt())),
+      deslocamentos: _lerDeslocamentos(p.getString('hinario.toms')),
     );
+  }
+
+  /// O Slider de Configurações só aceita 12..28 — valor fora da faixa (ou
+  /// corrompido) dispara assert na tela. Sem valor, mantém o padrão 16.
+  double _fonteValida(double? valor) {
+    if (valor == null || valor.isNaN) return 16;
+    return valor.clamp(12.0, 28.0);
+  }
+
+  /// Preferência corrompida não pode derrubar a inicialização: main() aguarda
+  /// restaurar() antes do runApp, então JSON malformado vira mapa vazio.
+  Map<String, int> _lerDeslocamentos(String? bruto) {
+    try {
+      final decodificado = jsonDecode(bruto ?? '{}');
+      if (decodificado is! Map) return const {};
+      return {
+        for (final entrada in decodificado.entries)
+          if (entrada.key is String && entrada.value is num)
+            entrada.key as String: (entrada.value as num).toInt(),
+      };
+    } catch (_) {
+      return const {};
+    }
   }
 }

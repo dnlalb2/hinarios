@@ -76,22 +76,36 @@ class BlocoHino extends StatelessWidget {
                   ),
                 ],
               ),
-            if (hino.cifra != null) ..._linhasCifra(context, hino, shift),
+            if (hino.cifra != null) ..._linhasCifra(context, hino, shift, tamanhoFonte),
             const SizedBox(height: 6),
-            Text(hino.letra, style: TextStyle(fontSize: tamanhoFonte, height: 1.5)),
+            // Com cifra, a letra já aparece intercalada com os acordes —
+            // renderizar de novo duplicaria a música inteira.
+            if (hino.cifra == null)
+              Text(hino.letra, style: TextStyle(fontSize: tamanhoFonte, height: 1.5)),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _linhasCifra(BuildContext context, Hino hino, int shift) {
-    final estilo = Theme.of(context).textTheme.bodyMedium!.copyWith(
+  List<Widget> _linhasCifra(BuildContext context, Hino hino, int shift, double tamanhoFonte) {
+    // Cifra e letra acompanham o tamanho escolhido em Configurações
+    // (mesma proporção 16px de referência usada pelo resto do bloco).
+    final escala = tamanhoFonte / 16;
+    final estiloAcorde = Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontFamily: 'monospace',
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
-          fontSize: 13,
+          fontSize: 13 * escala,
         );
+    // Mesma família monoespaçada da linha de acordes, para as colunas
+    // letra/acorde se alinharem.
+    final estiloLetra = estiloAcorde.copyWith(
+      color: Theme.of(context).colorScheme.onSurface,
+      fontWeight: FontWeight.w400,
+      fontSize: 14 * escala,
+      height: 1.4,
+    );
     return [
       for (final par in alinhar(hino.letra, hino.cifra!.texto))
         if (par.texto.isNotEmpty || par.acordes != null)
@@ -101,9 +115,9 @@ class BlocoHino extends StatelessWidget {
               if (par.acordes != null)
                 Text(
                   par.acordes!.split(' ').map((a) => transporAcorde(a, shift)).join(' '),
-                  style: estilo,
+                  style: estiloAcorde,
                 ),
-              Text(par.texto, style: TextStyle(fontSize: 14, height: 1.4)),
+              Text(par.texto, style: estiloLetra),
             ],
           ),
     ];

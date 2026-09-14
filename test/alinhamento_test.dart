@@ -29,8 +29,18 @@ void main() {
       'A\n\nB\n\nC',
       'D; Em; F',
     );
+    // O espaço depois do ';' é preservado (codifica a coluna do acorde).
     expect(linhas.where((l) => l.texto.isNotEmpty).map((l) => l.acordes),
-        ['D', 'Em', 'F']);
+        ['D', ' Em', ' F']);
+  });
+
+  test('preserva o whitespace de coluna dos compassos não vazios', () {
+    final linhas = alinhar('a\nb', '   D   A;Bm   F#m');
+    expect(linhas[0].acordes, '   D   A');
+    expect(linhas[1].acordes, 'Bm   F#m');
+    // Compasso só de espaços continua sendo "vazio" (sem acordes).
+    final comVazio = alinhar('a\nb', '   D   A;   ');
+    expect(comVazio[1].acordes, isNull);
   });
 
   test('letra sem cifra ou cifra sem letra', () {

@@ -23,6 +23,27 @@ void main() {
     expect(h.abc, 'A,2 |"D" D2 |');
   });
 
+  // Regressão C1: NBSP (U+00A0) vira espaço ASCII no parse — o split por
+  // espaço simples da UI volta a enxergar cada acorde.
+  test('parse normaliza NBSP na cifra e na letra', () {
+    final h = Hino.fromJson({
+      'slug': 'a/1/nbsp',
+      'num': 1,
+      'nome': 'NBSP',
+      'autor': '',
+      'autor_full': '',
+      'hinario': '',
+      'urlhinario': '',
+      'ritmo': '',
+      'letra': 'Linha com NBSP',
+      'cifra': {'tom': 'D', 'texto': 'D A D'},
+    });
+    expect(h.cifra!.texto, 'D A D');
+    expect(h.letra, 'Linha com NBSP');
+    expect(h.cifra!.texto.contains(' '), isFalse);
+    expect(h.letra.contains(' '), isFalse);
+  });
+
   test('hino sem cifra nem abc', () {
     final h = Hino.fromJson({
       'slug': 'a', 'num': 0, 'nome': 'X', 'autor': '',

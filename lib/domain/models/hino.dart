@@ -5,9 +5,12 @@ class Cifra {
   final String texto;
   Cifra({required this.tom, required this.texto});
 
+  /// NBSP (U+00A0) é usado como preenchimento de coluna em 179 cifras do
+  /// acervo. Normalizar no parse (NBSP → espaço ASCII) preserva o
+  /// alinhamento e faz o split por espaço da UI enxergar cada acorde.
   factory Cifra.fromJson(Map<String, dynamic> j) => Cifra(
         tom: (j['tom'] as String?) ?? '',
-        texto: (j['texto'] as String?) ?? '',
+        texto: ((j['texto'] as String?) ?? '').replaceAll(' ', ' '),
       );
 }
 
@@ -43,7 +46,7 @@ class Hino {
       hinario: (j['hinario'] as String?) ?? '',
       urlhinario: (j['urlhinario'] as String?) ?? '',
       ritmo: (j['ritmo'] as String?) ?? '',
-      letra: (j['letra'] as String?) ?? '',
+      letra: ((j['letra'] as String?) ?? '').replaceAll(' ', ' '),
       cifra: cifraJson is Map<String, dynamic> ? Cifra.fromJson(cifraJson) : null,
       abc: (abc == null || abc.isEmpty) ? null : abc,
     );
