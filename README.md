@@ -23,7 +23,7 @@ repositories). DI via `provider`. Ver
 
 - `assets/dados.json` — cópia de `../offline/dados.json`.
 - `assets/partituras/*.svg` — pré-renderizadas com abcm2ps
-  (`python3 ../gerar_partituras.py`).
+  (`python3 ../offline/gerar_partituras.py`).
 - Re-extrair dados: ver `../offline/README.txt`.
 
 ## Testes
