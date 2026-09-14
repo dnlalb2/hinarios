@@ -33,6 +33,6 @@ void main() {
     expect(vm.resultados.map((h) => h.nome), ['Três']); // só favorito
 
     vm.toggleSoFavoritos();
-    expect(vm.resultados, hasLength(4));
+    expect(vm.resultados, hasLength(5)); // fixture do repo tem 5 hinos
   });
 }

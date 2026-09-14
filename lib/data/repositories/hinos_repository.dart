@@ -20,18 +20,70 @@ class HinosRepository {
   }
 
   Map<String, Map<String, List<Hino>>> agrupar() {
-    final autores = <String, Map<String, List<Hino>>>{};
+    // 1. Identidade do hinário = urlhinario (hinos sem url: o nome).
+    final porAutor = <String, Map<String, List<Hino>>>{};
     for (final h in _hinos!) {
       final autor = h.autor.isEmpty ? 'Sem autor' : h.autor;
-      final hinario = h.hinario.isEmpty ? 'Sem hinário' : h.hinario;
-      autores.putIfAbsent(autor, () => {}).putIfAbsent(hinario, () => []).add(h);
+      final chave = h.urlhinario.isEmpty ? h.hinario : h.urlhinario;
+      porAutor.putIfAbsent(autor, () => {}).putIfAbsent(chave, () => []).add(h);
     }
-    for (final porAutor in autores.values) {
-      for (final lista in porAutor.values) {
-        lista.sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
+    final resultado = <String, Map<String, List<Hino>>>{};
+    for (final autor in porAutor.keys) {
+      final grupos = porAutor[autor]!;
+      // 2. Rótulo = nome de hinário mais comum no grupo (tie-break alfabético).
+      final rotuloPorChave = <String, String>{
+        for (final chave in grupos.keys) chave: _rotuloMaisComum(grupos[chave]!),
+      };
+      // 3. Colisão de rótulo (duas chaves, mesmo rótulo): o grupo de menor
+      //    contagem recebe o sufixo ' (chave)'; o maior fica com o rótulo puro.
+      final porRotulo = <String, List<String>>{};
+      for (final chave in grupos.keys) {
+        porRotulo.putIfAbsent(rotuloPorChave[chave]!, () => []).add(chave);
       }
+      final comRotulo = <String, List<Hino>>{};
+      for (final rotulo in porRotulo.keys) {
+        final chaves = porRotulo[rotulo]!;
+        if (chaves.length == 1) {
+          comRotulo[rotulo] = grupos[chaves.first]!;
+        } else {
+          chaves.sort((a, b) {
+            final c = grupos[a]!.length.compareTo(grupos[b]!.length);
+            return c != 0 ? c : a.compareTo(b);
+          });
+          for (final chave in chaves) {
+            final rotuloFinal = chave == chaves.last ? rotulo : '$rotulo ($chave)';
+            comRotulo[rotuloFinal] = grupos[chave]!;
+          }
+        }
+      }
+      // 4. Ordenação: autores e rótulos alfabéticos; hinos por num (tie-break nome).
+      final ordenado = <String, List<Hino>>{};
+      for (final rotulo in comRotulo.keys.toList()..sort()) {
+        final lista = comRotulo[rotulo]!
+          ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
+        ordenado[rotulo] = lista;
+      }
+      resultado[autor] = ordenado;
     }
-    return autores;
+    final autores = resultado.keys.toList()..sort();
+    return <String, Map<String, List<Hino>>>{
+      for (final autor in autores) autor: resultado[autor]!,
+    };
+  }
+
+  /// Nome de hinário mais comum no grupo; empate → ordem alfabética.
+  /// Nome vazio vira 'Sem hinário' (fallback do agrupamento antigo).
+  String _rotuloMaisComum(List<Hino> hinos) {
+    final contagem = <String, int>{};
+    for (final h in hinos) {
+      contagem[h.hinario] = (contagem[h.hinario] ?? 0) + 1;
+    }
+    final nome = contagem.keys.reduce((a, b) {
+      final ca = contagem[a]!, cb = contagem[b]!;
+      if (ca != cb) return ca > cb ? a : b;
+      return a.compareTo(b) < 0 ? a : b;
+    });
+    return nome.isEmpty ? 'Sem hinário' : nome;
   }
 
   List<Hino> buscar(String query) {
