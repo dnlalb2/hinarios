@@ -1,16 +1,31 @@
-# hinarios_app
+# Hinários EstudoFino Offline
 
-A new Flutter project.
+App Flutter com os hinários do Santo Daime — 100% offline. Letras com
+cifras alinhadas sobre cada linha, transposição de tom por meio-tom
+(por hino, persistida), busca, favoritos, tema escuro, controle de
+tamanho de fonte e partituras (SVG). Dados extraídos publicamente de
+https://estudofino.org/ (uso pessoal).
 
-## Getting Started
+## Rodar
 
-This project is a starting point for a Flutter application.
+    flutter pub get
+    flutter run -d chrome        # teste
+    flutter build apk            # Android (instalar no celular)
 
-A few resources to get you started if this is your first Flutter project:
+## Arquitetura
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Camadas: `ui/` (MVVM — views + view_models, widgets compartilhados em
+`ui/core/`), `domain/` (models + use_cases puros), `data/` (services +
+repositories). DI via `provider`. Ver
+`../docs/superpowers/specs/2026-08-27-hinarios-flutter-app-design.md`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Dados
+
+- `assets/dados.json` — cópia de `../offline/dados.json`.
+- `assets/partituras/*.svg` — pré-renderizadas com abcm2ps
+  (`python3 ../gerar_partituras.py`).
+- Re-extrair dados: ver `../offline/README.txt`.
+
+## Testes
+
+    flutter test
