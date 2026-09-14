@@ -19,7 +19,8 @@ void main() {
     await repo.carregar();
     final pref = PreferenciasViewModel(service: PreferenciasService());
     await pref.restaurar();
-    final vm = HinarioViewModel(hinos: repo, urlhinario: 'x', autor: 'A', hinario: 'Hinário X');
+    final vm = HinarioViewModel(
+      hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X');
     await tester.pumpWidget(
       MultiProvider(
         providers: [

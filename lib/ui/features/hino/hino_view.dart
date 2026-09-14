@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
-import '../../../data/repositories/hinos_repository.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
 import 'hino_view_model.dart';
@@ -13,7 +12,6 @@ class HinoView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HinoViewModel>();
-    final repo = context.read<HinosRepository>();
     return Scaffold(
       appBar: AppBar(title: Text(vm.hino.nome)),
       body: ListView(
@@ -25,10 +23,9 @@ class HinoView extends StatelessWidget {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider.value(
-                      value: HinarioViewModel(
-                        hinos: repo,
-                        urlhinario: vm.hino.urlhinario,
+                    builder: (_) => ChangeNotifierProvider(
+                      create: (_) => HinarioViewModel(
+                        hinos: vm.doHinario,
                         autor: vm.hino.autor,
                         hinario: vm.hino.hinario,
                       ),

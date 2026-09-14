@@ -36,6 +36,29 @@ class HinosServiceFake implements HinosService {
       ]);
 }
 
+/// Fixture com hinos SEM url (caso real: 18 hinos do acervo) — a chave do
+/// grupo passa a ser o NOME do hinário.
+class HinosServiceSemUrlFake implements HinosService {
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        {
+          'slug': 'a/1/conc1', 'num': 1, 'nome': 'Concentração 1', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'Concentração', 'urlhinario': '',
+          'ritmo': '', 'letra': 'Letra 1',
+        },
+        {
+          'slug': 'a/2/conc2', 'num': 2, 'nome': 'Concentração 2', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'Concentração', 'urlhinario': '',
+          'ritmo': '', 'letra': 'Letra 2',
+        },
+        {
+          'slug': 'a/3/talisma', 'num': 1, 'nome': 'O Talismã', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'O Talismã', 'urlhinario': '',
+          'ritmo': '', 'letra': 'Letra 3',
+        },
+      ]);
+}
+
 void main() {
   test('carregar parseia e cacheia (service chamado uma vez)', () async {
     final service = HinosServiceFake();
@@ -90,5 +113,26 @@ void main() {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     expect(repo.hinosDoHinario('x').map((x) => x.num), [1, 1, 2]);
+  });
+
+  test('hinosDoGrupo: por url, e por nome quando sem url', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final um = (await repo.carregar()).firstWhere((h) => h.nome == 'Um');
+    expect(repo.chaveDe(um), 'x');
+    // chave 'x' E autor A: Três(1), Um(2) — ordenados por num.
+    expect(repo.hinosDoGrupo(um).map((h) => h.nome), ['Três', 'Um']);
+    // Mesma chave 'x', autor B: o grupo do hino é só o dele (não cruza autores).
+    final quatro = (await repo.carregar()).firstWhere((h) => h.nome == 'Quatro');
+    expect(repo.hinosDoGrupo(quatro).map((h) => h.nome), ['Quatro']);
+
+    // Sem url: a chave é o NOME do hinário — grupos distintos não se juntam.
+    final semUrl = HinosRepository(service: HinosServiceSemUrlFake());
+    await semUrl.carregar();
+    final conc1 = (await semUrl.carregar()).firstWhere((h) => h.nome == 'Concentração 1');
+    expect(semUrl.chaveDe(conc1), 'Concentração');
+    expect(semUrl.hinosDoGrupo(conc1).map((h) => h.nome), ['Concentração 1', 'Concentração 2']);
+    final talisma = (await semUrl.carregar()).firstWhere((h) => h.nome == 'O Talismã');
+    expect(semUrl.hinosDoGrupo(talisma).map((h) => h.nome), ['O Talismã']);
   });
 }

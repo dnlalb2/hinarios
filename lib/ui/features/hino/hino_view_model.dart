@@ -9,5 +9,5 @@ class HinoViewModel extends ChangeNotifier {
   final HinosRepository _hinos;
   final Hino hino;
 
-  List<Hino> get doHinario => _hinos.hinosDoHinario(hino.urlhinario);
+  List<Hino> get doHinario => _hinos.hinosDoGrupo(hino);
 }

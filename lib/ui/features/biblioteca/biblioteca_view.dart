@@ -100,8 +100,7 @@ class BibliotecaView extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => ChangeNotifierProvider(
                         create: (_) => HinarioViewModel(
-                          hinos: context.read<HinosRepository>(),
-                          urlhinario: grupos[autor]![hinario]!.first.urlhinario,
+                          hinos: grupos[autor]![hinario]!,
                           autor: autor,
                           hinario: hinario,
                         ),

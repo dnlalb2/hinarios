@@ -36,5 +36,7 @@ void main() {
     await tester.tap(find.text('ver no hinário'));
     await tester.pumpAndSettle();
     expect(find.text('2. Um'), findsOneWidget); // página do hinário
+    // O grupo do hino é chave+autor: '1. Quatro' (autor B, mesma url 'x') fica fora.
+    expect(find.text('1. Quatro'), findsNothing);
   });
 }

@@ -98,6 +98,19 @@ class HinosRepository {
     }).toList();
   }
 
+  /// Chave de agrupamento do hino: urlhinario, ou o nome quando a url é vazia.
+  String chaveDe(Hino h) => h.urlhinario.isEmpty ? h.hinario : h.urlhinario;
+
+  /// Todos os hinos do mesmo grupo do hino (mesma chave e mesmo autor),
+  /// ordenados por num (tie-break nome). Espelha o agrupamento da árvore.
+  List<Hino> hinosDoGrupo(Hino h) {
+    final chave = chaveDe(h);
+    return _hinos!
+        .where((x) => x.autor == h.autor && chaveDe(x) == chave)
+        .toList()
+      ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
+  }
+
   List<Hino> hinosDoHinario(String urlhinario) {
     final lista = _hinos!.where((h) => h.urlhinario == urlhinario).toList()
       ..sort((a, b) => a.num.compareTo(b.num));
