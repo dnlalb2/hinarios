@@ -1,11 +1,11 @@
 {
-    "name": "hinarios_app",
-    "short_name": "hinarios_app",
+    "name": "Hinários EstudoFino",
+    "short_name": "Hinários",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3B2E1E",
+    "theme_color": "#3B2E1E",
+    "description": "Hinários do Santo Daime offline — letras, cifras com transposição de tom, favoritos e partituras.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
