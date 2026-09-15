@@ -132,7 +132,14 @@ class _EditorCifraViewState extends State<EditorCifraView> {
     // posiciona o acorde contando colunas que não existem e a cifra sai
     // desalinhada na exibição.
     final tamanhoFonte = context.read<PreferenciasViewModel>().tamanhoFonte;
-    final estiloMono = TextStyle(fontFamily: 'monospace', fontSize: tamanhoFonte);
+    // letterSpacing 0 explícito: sem ele o tema injeta espaçamentos DIFERENTES
+    // em cada widget (bodyMedium 0.25 na régua, bodyLarge 0.5 no TextField) e a
+    // coluna N do campo deixa de cair sob a coluna N da régua.
+    final estiloMono = TextStyle(
+      fontFamily: 'monospace',
+      fontSize: tamanhoFonte,
+      letterSpacing: 0,
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text('Cifra — ${widget.hino.nome}'),
@@ -171,10 +178,16 @@ class _EditorCifraViewState extends State<EditorCifraView> {
             TextField(
               controller: _controllers[i],
               style: estiloMono,
+              // contentPadding zero: o padding interno do campo (herdado,
+              // ~16px à esquerda) empurrava a coluna 0 do texto digitado para
+              // a direita da régua logo acima — o usuário alinhava o acorde na
+              // régua e o render, sem padding, saía deslocado para a ESQUERDA.
+              // A borda inferior mantém a pista visual sem deslocar o texto.
               decoration: const InputDecoration(
                 hintText: 'acordes desta linha',
                 isDense: true,
-                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.zero,
+                border: UnderlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),

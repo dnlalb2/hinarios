@@ -1,5 +1,6 @@
 // test/editor_cifra_test.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,6 +83,37 @@ void main() {
     expect(regua.style!.fontFamily, 'monospace');
     expect(campo.style!.fontSize, 22); // = vm.tamanhoFonte (1:1 com o display)
     expect(regua.style!.fontSize, campo.style!.fontSize);
+  });
+
+  // Regressão de alinhamento: o TextField tem padding INTERNO por padrão
+  // (contentPadding herdado, ~16px à esquerda com a borda de contorno) — a
+  // coluna 0 do texto digitado ficava à direita da régua logo acima. O usuário
+  // posiciona o acorde alinhado à régua e o render (sem padding) joga a cifra
+  // para a ESQUERDA. Coluna 0 = borda esquerda do campo, como na régua.
+  testWidgets('coluna 0 do campo de acordes alinhada à régua (sem padding interno)', (tester) async {
+    await montar(tester);
+    final campo = find.byType(TextField).first;
+    final texto = find.descendant(of: campo, matching: find.byType(EditableText));
+    final regua = find.text('Primeira linha');
+    final coluna0 = tester.getTopLeft(regua).dx;
+
+    // Estrutural: sem padding interno e com uma borda que não desloca o texto.
+    final decoracao = tester.widget<TextField>(campo).decoration!;
+    expect(decoracao.contentPadding, EdgeInsets.zero);
+    expect(decoracao.border, isA<UnderlineInputBorder>());
+
+    // Posicional: régua, caixa do campo e TEXTO digitado na mesma coluna 0.
+    expect(tester.getTopLeft(campo).dx, coluna0);
+    expect(tester.getTopLeft(texto).dx, coluna0);
+
+    // Métrica EFETIVA igual: o tema injeta letterSpacing diferente em cada um
+    // (bodyMedium 0.25 na régua, bodyLarge 0.5 no campo) e as colunas do campo
+    // divergiriam da régua linha afora.
+    final estiloRegua = tester.renderObject<RenderParagraph>(regua).text.style!;
+    final estiloCampo = tester.widget<EditableText>(texto).style;
+    expect(estiloCampo.fontFamily, estiloRegua.fontFamily);
+    expect(estiloCampo.fontSize, estiloRegua.fontSize);
+    expect(estiloCampo.letterSpacing, estiloRegua.letterSpacing);
   });
 
   testWidgets('salvar grava tom + acordes por linha no VM e volta', (tester) async {
