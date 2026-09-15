@@ -1,6 +1,7 @@
 // lib/data/repositories/hinos_repository.dart
 import 'dart:convert';
 import '../../domain/models/hino.dart';
+import '../../domain/use_cases/busca.dart';
 import '../services/hinos_service.dart';
 
 /// Grupo de hinos de um mesmo hinário (autor + rótulo) devolvido pela busca.
@@ -31,23 +32,6 @@ class ResultadoBusca {
   const ResultadoBusca({required this.hino, this.trecho, this.destaqueInicio, this.destaqueFim});
 }
 
-// Normalização pt-BR sem NFD (não há API nativa): 28 substituições 1:1.
-// Inclui os indicadores ordinais ª/º ('1ª VEZ' na letra casa com '1a vez').
-const _acentos = 'áàâãäéèêëíìîïóòôõöúùûüçñýÿªº';
-const _semAcento = 'aaaaaeeeeiiiiooooouuuucnyyao';
-
-/// Minúsculas e sem acentos — o índice e a consulta passam por aqui, então
-/// 'chaveirao' acha 'Chaveirão'.
-String _normalizar(String texto) {
-  final minusculo = texto.toLowerCase();
-  final buffer = StringBuffer();
-  for (final char in minusculo.split('')) {
-    final i = _acentos.indexOf(char);
-    buffer.write(i == -1 ? char : _semAcento[i]);
-  }
-  return buffer.toString();
-}
-
 /// Fonte única de verdade dos hinários. Transforma o JSON bruto em
 /// domain models, cacheia e oferece agrupamento/busca/filtro.
 class HinosRepository {
@@ -69,16 +53,12 @@ class HinosRepository {
   /// Cache do [agrupar] (autor → grupos globais): mesma razão.
   Map<String, List<GrupoHinario>>? _gruposCache;
 
-  static final _espacos = RegExp(r'\s+');
   /// Contexto mostrado de cada lado do termo no trecho (em caracteres).
   static const _margem = 30;
   /// Quebras viram espaço 1:1 (o acervo é CRLF): o comprimento não muda, então
   /// os offsets do destaque continuam válidos. O '\t' dos 4 hinos tabulados
   /// entra junto — também estragaria a linha única do trecho.
   static final _quebras = RegExp(r'[\r\n\t]');
-
-  List<String> _tokens(String query) =>
-      _normalizar(query).split(_espacos).where((t) => t.isNotEmpty).toList();
 
   Future<List<Hino>> carregar() async {
     if (_hinos != null) return _hinos!;
@@ -94,9 +74,9 @@ class HinosRepository {
 
   /// Cabeçalho do hino (nome+autor+hinário) normalizado. É o que a busca
   /// considera "resolvido sem a letra" — logo, sem trecho para destacar.
-  String _cabecalhoDe(Hino h) => _normalizar('${h.nome} ${h.autor} ${h.hinario}');
+  String _cabecalhoDe(Hino h) => normalizar('${h.nome} ${h.autor} ${h.hinario}');
 
-  String _textoDeBusca(Hino h) => _normalizar([
+  String _textoDeBusca(Hino h) => normalizar([
         h.nome,
         h.autor,
         h.hinario,
@@ -164,8 +144,8 @@ class HinosRepository {
         ),
     ];
     lista.sort((a, b) {
-      final c = _normalizar(a.rotulo).compareTo(_normalizar(b.rotulo));
-      return c != 0 ? c : _normalizar(a.autor).compareTo(_normalizar(b.autor));
+      final c = normalizar(a.rotulo).compareTo(normalizar(b.rotulo));
+      return c != 0 ? c : normalizar(a.autor).compareTo(normalizar(b.autor));
     });
     return _gruposGlobaisCache = lista;
   }
@@ -196,7 +176,7 @@ class HinosRepository {
     }
     final autores = resultado.keys.toList()
       ..sort((a, b) {
-        final c = _normalizar(a).compareTo(_normalizar(b));
+        final c = normalizar(a).compareTo(normalizar(b));
         return c != 0 ? c : a.compareTo(b);
       });
     return _gruposCache = <String, List<GrupoHinario>>{
@@ -230,7 +210,10 @@ class HinosRepository {
   /// sozinho não fecha o casamento, ele veio da letra e o resultado traz o
   /// trecho ao redor do termo, com os offsets para destaque na lista compacta.
   List<ResultadoBusca> buscar(String query) {
-    final tokens = _tokens(query);
+    // Mesma regra do [casaBusca] (todos os tokens, substring), mas casada
+    // contra o índice JÁ normalizado: chamar casaBusca aqui normalizaria os
+    // ~3,4 MB do acervo a cada tecla — exatamente o que o índice evita.
+    final tokens = tokenizar(query);
     final hinos = _hinos!;
     final indice = _indice!;
     final cabecalhos = _indiceCabecalho!;
@@ -247,10 +230,10 @@ class HinosRepository {
   /// letra explica.
   ResultadoBusca _resultado(Hino h, List<String> tokens, String cabecalho) {
     if (tokens.every(cabecalho.contains)) return ResultadoBusca(hino: h);
-    // _normalizar troca 1 caractere por 1 (não há NFD por aqui): o índice no
+    // normalizar troca 1 caractere por 1 (não há NFD por aqui): o índice no
     // texto normalizado É o índice na letra original — dá para recortar a
     // letra ORIGINAL usando a posição achada no texto normalizado.
-    final normalizada = _normalizar(h.letra);
+    final normalizada = normalizar(h.letra);
     for (final token in tokens) {
       if (cabecalho.contains(token)) continue; // já explicado pelo cabeçalho
       final idx = normalizada.indexOf(token);
@@ -285,11 +268,11 @@ class HinosRepository {
   /// e o que pesava era o reagrupamento dos 3087 hinos — agora pago uma única
   /// vez por carga, então nenhum índice por grupo é necessário.
   List<GrupoHinario> buscarGrupos(String query) {
-    final tokens = _tokens(query);
+    final tokens = tokenizar(query);
     if (tokens.isEmpty) return const [];
     final resultado = <GrupoHinario>[];
     for (final grupo in gruposGlobais()) {
-      final alvo = _normalizar('${grupo.rotulo} ${grupo.autor}');
+      final alvo = normalizar('${grupo.rotulo} ${grupo.autor}');
       if (tokens.every(alvo.contains)) resultado.add(grupo);
     }
     return resultado;
