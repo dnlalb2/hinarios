@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../../data/repositories/hinos_repository.dart';
+import '../../../domain/models/hino.dart';
 import '../../core/preferencias_view_model.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
@@ -74,22 +75,17 @@ class BibliotecaView extends StatelessWidget {
                 ? ListView(
                     children: [
                       ..._secaoHinarios(context, vm),
-                      for (final h in vm.resultados)
-                        InkWell(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ChangeNotifierProvider(
-                                create: (_) => HinoViewModel(
-                                  hinos: context.read<HinosRepository>(),
-                                  hino: h,
-                                ),
-                                child: const HinoView(),
-                              ),
-                            ),
+                      // Busca: resultados compactos (a letra inteira inundava a
+                      // tela). Só o modo favoritos sem busca lista os hinos
+                      // completos — ali a intenção é ler, não procurar.
+                      if (vm.emBusca)
+                        ..._secaoHinos(context, vm)
+                      else
+                        for (final r in vm.resultados)
+                          InkWell(
+                            onTap: () => _abrirHino(context, r.hino),
+                            child: BlocoHino(hino: r.hino),
                           ),
-                          child: BlocoHino(hino: h),
-                        ),
                     ],
                   )
                 : vm.visaoPorAutor
@@ -97,6 +93,72 @@ class BibliotecaView extends StatelessWidget {
                     : _listaDeHinarios(context, vm.gruposHinarios),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Seção "Hinos (n)": os resultados da busca, um [ListTile] compacto cada —
+  /// no lugar do bloco inteiro de letra/cifra que existia antes.
+  List<Widget> _secaoHinos(BuildContext context, BibliotecaViewModel vm) {
+    final resultados = vm.resultados;
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text('Hinos (${resultados.length})',
+            style: Theme.of(context).textTheme.titleSmall),
+      ),
+      for (final r in resultados) _resultado(context, r),
+    ];
+  }
+
+  /// Um resultado compacto: hino (num. nome), autor · hinário e — quando o
+  /// casamento veio da letra — o trecho com o termo em destaque.
+  Widget _resultado(BuildContext context, ResultadoBusca r) {
+    final trecho = r.trecho;
+    final inicio = r.destaqueInicio;
+    final fim = r.destaqueFim;
+    return ListTile(
+      title: Text('${r.hino.num}. ${r.hino.nome}'),
+      subtitle: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${r.hino.autor} · ${r.hino.hinario}'),
+          if (trecho != null && inicio != null && fim != null)
+            Text.rich(
+              TextSpan(children: [
+                TextSpan(text: trecho.substring(0, inicio)),
+                TextSpan(
+                  text: trecho.substring(inicio, fim),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextSpan(text: trecho.substring(fim)),
+              ]),
+              // Trecho longo não estica a linha: 2 linhas e reticências.
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ),
+      onTap: () => _abrirHino(context, r.hino),
+    );
+  }
+
+  /// Abre a página do hino (mesma navegação dos outros pontos da biblioteca).
+  void _abrirHino(BuildContext context, Hino hino) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => HinoViewModel(
+            hinos: context.read<HinosRepository>(),
+            hino: hino,
+          ),
+          child: const HinoView(),
+        ),
       ),
     );
   }

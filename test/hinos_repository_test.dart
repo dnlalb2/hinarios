@@ -121,6 +121,31 @@ class HinosServiceAutoresFake implements HinosService {
       ]);
 }
 
+/// Fixture LOCAL com o termo SÓ na letra (acentuado, no meio de uma letra
+/// longa e com quebra de linha): o trecho sai cortado nas duas pontas e o
+/// destaque precisa cair sobre a palavra ORIGINAL, acentuada. O 2º hino casa
+/// apenas pelo TOM da cifra — não pode gerar trecho nenhum.
+class HinosServiceLetraFake implements HinosService {
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        {
+          'slug': 'c/1/coracao', 'num': 1, 'nome': 'Hino Bonito', 'autor': 'C',
+          'autor_full': 'C', 'hinario': 'Hinário Z', 'urlhinario': 'z',
+          'ritmo': '',
+          // Sem 'f' em lugar nenhum: o 'f' da consulta só existe no TOM do 2º
+          // hino ('F#'), então o casamento dele não pode gerar trecho.
+          'letra': 'Primeira linha do hino\ncom palavras compridas e um coração '
+              'no meio, e depois segue adiante com mais palavras no encerramento.',
+        },
+        {
+          'slug': 'c/2/toada', 'num': 2, 'nome': 'Toada', 'autor': 'C',
+          'autor_full': 'C', 'hinario': 'Hinário Z', 'urlhinario': 'z',
+          'ritmo': '', 'letra': 'Sol e lua',
+          'cifra': {'tom': 'F#', 'texto': 'F# B'},
+        },
+      ]);
+}
+
 void main() {
   test('carregar parseia e cacheia (service chamado uma vez)', () async {
     final service = HinosServiceFake();
@@ -201,25 +226,87 @@ void main() {
     expect(repo.buscar('D'), hasLength(3));
     expect(repo.buscar(''), hasLength(5));
     expect(repo.buscar('nada que exista'), isEmpty);
+    // Query vazia: todos os hinos, nenhum com trecho (nada foi destacado).
+    expect(repo.buscar('').every((r) => r.trecho == null), isTrue);
+  });
+
+  test('buscar: casamento pela letra traz o trecho com o termo destacado', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final r = repo.buscar('terra').single;
+    expect(r.hino.nome, 'Três');
+    expect(r.trecho, 'Terra e mar'); // letra inteira: coube na janela de 30
+    expect(r.trecho!.substring(r.destaqueInicio!, r.destaqueFim!), 'Terra');
+    // O destaque seleciona o TERMO buscado (normalizado, ignora caixa).
+    expect(r.trecho!.substring(r.destaqueInicio!, r.destaqueFim!).toLowerCase(),
+        'terra');
+  });
+
+  test('buscar: casamento por nome+autor+hinário não traz trecho', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    for (final r in repo.buscar('um')) {
+      expect(r.hino.nome, 'Um');
+      expect(r.trecho, isNull);
+      expect(r.destaqueInicio, isNull);
+      expect(r.destaqueFim, isNull);
+    }
+    // 'hinario x' casa o cabeçalho (hinário) de todos eles — sem trecho.
+    expect(repo.buscar('hinario x').every((r) => r.trecho == null), isTrue);
+    expect(repo.buscar('hinario x').map((r) => r.hino.nome),
+        ['Um', 'Três', 'Quatro', 'Cinco']);
   });
 
   test('buscar: ignora acentos (normalização pt-BR)', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     // Caso real: 'chaveirao' precisa achar 'Chaveirão'.
-    expect(repo.buscar('tres').map((h) => h.nome), ['Três']);
-    expect(repo.buscar('TRÊS').map((h) => h.nome), ['Três']);
+    expect(repo.buscar('tres').map((r) => r.hino.nome), ['Três']);
+    expect(repo.buscar('TRÊS').map((r) => r.hino.nome), ['Três']);
+    // Nome casa: nada de trecho, com ou sem acento na consulta.
+    expect(repo.buscar('tres').single.trecho, isNull);
+    expect(repo.buscar('TRÊS').single.trecho, isNull);
     // 'hinario x' sem acento acha os hinos dos dois grupos de rótulo 'Hinário X'
-    expect(repo.buscar('hinario x').map((h) => h.nome), ['Um', 'Três', 'Quatro', 'Cinco']);
+    expect(repo.buscar('hinario x').map((r) => r.hino.nome), ['Um', 'Três', 'Quatro', 'Cinco']);
+  });
+
+  test('buscar: letra acentuada — trecho recortado com o termo original destacado', () async {
+    final repo = HinosRepository(service: HinosServiceLetraFake());
+    await repo.carregar();
+    // 'coracao' (sem acento) casa a LETRA 'coração' (com acento).
+    final r = repo.buscar('coracao').single;
+    expect(r.hino.nome, 'Hino Bonito');
+    final trecho = r.trecho!;
+    expect(trecho, contains('coração'));
+    expect(trecho, isNot(contains('\n'))); // quebras viram espaço
+    expect(trecho, startsWith('…')); // cortado antes do termo
+    expect(trecho, endsWith('…'));   // e depois dele
+    // O índice achado no texto normalizado vale na letra ORIGINAL: o destaque
+    // cobre a palavra acentuada, não um deslocamento.
+    expect(trecho.substring(r.destaqueInicio!, r.destaqueFim!), 'coração');
+  });
+
+  test('buscar: casamento só pelo tom não gera trecho', () async {
+    final repo = HinosRepository(service: HinosServiceLetraFake());
+    await repo.carregar();
+    // 'f' só existe no tom 'F#' da cifra — a letra não tem o termo.
+    final resultado = repo.buscar('f');
+    expect(resultado.map((r) => r.hino.nome), ['Toada']);
+    expect(resultado.single.trecho, isNull);
   });
 
   test('buscar: ª e º também são normalizados', () async {
     final repo = HinosRepository(service: HinosServiceOrdinalFake());
     await repo.carregar();
     // '1ª VEZ' na letra casa com a consulta acentuada e com '1a vez'.
-    expect(repo.buscar('1ª VEZ').map((h) => h.nome), ['Ordinal']);
-    expect(repo.buscar('1a vez').map((h) => h.nome), ['Ordinal']);
-    expect(repo.buscar('2o refrao').map((h) => h.nome), ['Ordinal']); // º → o
+    expect(repo.buscar('1ª VEZ').map((r) => r.hino.nome), ['Ordinal']);
+    expect(repo.buscar('1a vez').map((r) => r.hino.nome), ['Ordinal']);
+    expect(repo.buscar('2o refrao').map((r) => r.hino.nome), ['Ordinal']); // º → o
+    // Casou pela letra: o destaque cobre '1ª' na letra ORIGINAL — o token
+    // normalizado '1a' tem o mesmo comprimento (ª → a é 1:1).
+    final r = repo.buscar('1a vez').single;
+    expect(r.trecho, isNotNull);
+    expect(r.trecho!.substring(r.destaqueInicio!, r.destaqueFim!), '1ª');
   });
 
   test('buscarGrupos: casa rótulo e autor, na ordem dos grupos globais', () async {

@@ -75,7 +75,30 @@ void main() {
     expect(repo.buscar(''), hasLength(3087));
     final resultado = repo.buscar('cruzeiro');
     expect(resultado, isNotEmpty);
-    final posicoes = resultado.map(todos.indexOf).toList();
+    final posicoes = resultado.map((r) => todos.indexOf(r.hino)).toList();
     expect(posicoes, orderedEquals(List.of(posicoes)..sort()));
+  });
+
+  // O acervo é CRLF (3068 letras): o trecho da lista compacta precisa sair
+  // numa linha só e com o destaque caindo exatamente sobre o termo buscado.
+  test('acervo real: trecho da busca é uma janela da letra, sem quebras', () async {
+    final repo = HinosRepository(service: HinosService());
+    await repo.carregar();
+    final comTrecho = repo.buscar('cruzeiro').where((r) => r.trecho != null).toList();
+    expect(comTrecho, isNotEmpty); // 'cruzeiro' aparece na letra de vários hinos
+    for (final r in comTrecho) {
+      final trecho = r.trecho!;
+      expect(trecho.contains('\r'), isFalse);
+      expect(trecho.contains('\n'), isFalse);
+      expect(r.destaqueInicio, greaterThanOrEqualTo(0));
+      expect(r.destaqueFim, lessThanOrEqualTo(trecho.length));
+      // O destaque cobre o termo na letra ORIGINAL (o índice do texto
+      // normalizado vale na letra: a normalização é 1 caractere → 1).
+      expect(trecho.substring(r.destaqueInicio!, r.destaqueFim!).toLowerCase(),
+          'cruzeiro');
+      // O trecho (sem as reticências) é um recorte contíguo da letra.
+      expect(r.hino.letra.replaceAll(RegExp('[\r\n\t]'), ' '),
+          contains(trecho.replaceAll('…', '')));
+    }
   });
 }

@@ -7,6 +7,7 @@ import 'package:hinarios_app/data/repositories/hinos_repository.dart';
 import 'package:hinarios_app/data/services/hinos_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
+import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 import 'hinos_repository_test.dart' show HinosServiceFake;
 
 void main() {
@@ -26,8 +27,11 @@ void main() {
     await pumpApp(tester, HinosServiceFake());
     await tester.enterText(find.byType(TextField), 'terra');
     await tester.pumpAndSettle();
+    // O resultado é compacto: nenhuma letra inteira na tela de busca.
+    expect(find.byType(BlocoHino), findsNothing);
     await tester.tap(find.text('1. Três'));
     await tester.pumpAndSettle();
+    expect(find.byType(BlocoHino), findsOneWidget); // a página do hino
     expect(find.text('ver no hinário'), findsOneWidget);
     await tester.tap(find.text('ver no hinário'));
     await tester.pumpAndSettle();

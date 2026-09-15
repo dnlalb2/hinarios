@@ -11,6 +11,21 @@ class GrupoHinario {
   const GrupoHinario({required this.autor, required this.rotulo, required this.hinos});
 }
 
+/// Um resultado da busca. A lista compacta da biblioteca mostra o título e o
+/// autor/hinário; quando o casamento só foi fechado pela LETRA, mostra também
+/// o [trecho] ao redor do termo, com [destaqueInicio]/[destaqueFim] marcando o
+/// que realçar.
+class ResultadoBusca {
+  final Hino hino;
+  /// Trecho da letra ao redor do termo, quando o casamento NÃO foi
+  /// resolvido por nome+autor+hinário (ou seja, veio da letra).
+  final String? trecho;
+  /// Offsets [inicio, fim) do termo dentro de [trecho] (para destaque).
+  final int? destaqueInicio;
+  final int? destaqueFim;
+  const ResultadoBusca({required this.hino, this.trecho, this.destaqueInicio, this.destaqueFim});
+}
+
 // Normalização pt-BR sem NFD (não há API nativa): 28 substituições 1:1.
 // Inclui os indicadores ordinais ª/º ('1ª VEZ' na letra casa com '1a vez').
 const _acentos = 'áàâãäéèêëíìîïóòôõöúùûüçñýÿªº';
@@ -39,6 +54,10 @@ class HinosRepository {
   /// construído uma única vez em [carregar]. Sem ele, cada tecla digitada
   /// reconstruía ~3,4 MB de strings para os 3087 hinos.
   List<String>? _indice;
+  /// Cabeçalho (nome+autor+hinário) normalizado por hino — pré-computado pelo
+  /// mesmo motivo do [_indice]: decidir se o casamento foi resolvido pelo
+  /// cabeçalho (sem trecho) é uma checagem por tecla, não por carregamento.
+  List<String>? _indiceCabecalho;
   /// Cache do [gruposGlobais] (reagrupar 3087 hinos custa O(n log n) por
   /// build, não por tecla). Invalidado em [carregar], quando `_hinos` troca.
   List<GrupoHinario>? _gruposGlobaisCache;
@@ -46,6 +65,12 @@ class HinosRepository {
   Map<String, List<GrupoHinario>>? _gruposCache;
 
   static final _espacos = RegExp(r'\s+');
+  /// Contexto mostrado de cada lado do termo no trecho (em caracteres).
+  static const _margem = 30;
+  /// Quebras viram espaço 1:1 (o acervo é CRLF): o comprimento não muda, então
+  /// os offsets do destaque continuam válidos. O '\t' dos 4 hinos tabulados
+  /// entra junto — também estragaria a linha única do trecho.
+  static final _quebras = RegExp(r'[\r\n\t]');
 
   List<String> _tokens(String query) =>
       _normalizar(query).split(_espacos).where((t) => t.isNotEmpty).toList();
@@ -58,8 +83,13 @@ class HinosRepository {
     final lista = jsonDecode(texto) as List<dynamic>;
     _hinos = [for (final item in lista) Hino.fromJson(item as Map<String, dynamic>)];
     _indice = [for (final h in _hinos!) _textoDeBusca(h)];
+    _indiceCabecalho = [for (final h in _hinos!) _cabecalhoDe(h)];
     return _hinos!;
   }
+
+  /// Cabeçalho do hino (nome+autor+hinário) normalizado. É o que a busca
+  /// considera "resolvido sem a letra" — logo, sem trecho para destacar.
+  String _cabecalhoDe(Hino h) => _normalizar('${h.nome} ${h.autor} ${h.hinario}');
 
   String _textoDeBusca(Hino h) => _normalizar([
         h.nome,
@@ -184,15 +214,58 @@ class HinosRepository {
     return nome.isEmpty ? 'Sem hinário' : nome;
   }
 
-  List<Hino> buscar(String query) {
+  /// Busca por tokens (normalizados, substring, todos presentes). Query vazia →
+  /// todos os hinos, nenhum com trecho. Quando o cabeçalho (nome+autor+hinário)
+  /// sozinho não fecha o casamento, ele veio da letra e o resultado traz o
+  /// trecho ao redor do termo, com os offsets para destaque na lista compacta.
+  List<ResultadoBusca> buscar(String query) {
     final tokens = _tokens(query);
-    if (tokens.isEmpty) return _hinos!;
     final hinos = _hinos!;
     final indice = _indice!;
+    final cabecalhos = _indiceCabecalho!;
     return [
       for (var i = 0; i < hinos.length; i++)
-        if (tokens.every(indice[i].contains)) hinos[i],
+        if (tokens.every(indice[i].contains)) _resultado(hinos[i], tokens, cabecalhos[i]),
     ];
+  }
+
+  /// Monta o resultado: sem trecho quando [cabecalho] (já normalizado) satisfaz
+  /// todos os tokens — a lista compacta acha o hino pelo nome, autor ou
+  /// hinário. Senão o que fechou o casamento foi a letra (ou o tom da cifra,
+  /// que não rende trecho), e a janela sai ao redor do primeiro token que só a
+  /// letra explica.
+  ResultadoBusca _resultado(Hino h, List<String> tokens, String cabecalho) {
+    if (tokens.every(cabecalho.contains)) return ResultadoBusca(hino: h);
+    // _normalizar troca 1 caractere por 1 (não há NFD por aqui): o índice no
+    // texto normalizado É o índice na letra original — dá para recortar a
+    // letra ORIGINAL usando a posição achada no texto normalizado.
+    final normalizada = _normalizar(h.letra);
+    for (final token in tokens) {
+      if (cabecalho.contains(token)) continue; // já explicado pelo cabeçalho
+      final idx = normalizada.indexOf(token);
+      if (idx == -1) continue; // casou pelo tom da cifra
+      return _comTrecho(h, token, idx);
+    }
+    return ResultadoBusca(hino: h);
+  }
+
+  /// Trecho de ~30 caracteres de cada lado do termo, em uma linha só (o acervo
+  /// é CRLF: 3068 das 3087 letras têm '\r\n'), com '…' nas pontas cortadas e o
+  /// destaque ajustado pelo deslocamento do recorte.
+  ResultadoBusca _comTrecho(Hino h, String token, int idx) {
+    final inicio = idx > _margem ? idx - _margem : 0;
+    final fimBruto = idx + token.length + _margem;
+    final fim = fimBruto < h.letra.length ? fimBruto : h.letra.length;
+    final trecho = '${inicio > 0 ? '…' : ''}'
+        '${h.letra.substring(inicio, fim).replaceAll(_quebras, ' ')}'
+        '${fim < h.letra.length ? '…' : ''}';
+    final destaqueInicio = idx - inicio + (inicio > 0 ? 1 : 0);
+    return ResultadoBusca(
+      hino: h,
+      trecho: trecho,
+      destaqueInicio: destaqueInicio,
+      destaqueFim: destaqueInicio + token.length,
+    );
   }
 
   /// Grupos GLOBAIS cujo rótulo OU autor casam todos os tokens da consulta

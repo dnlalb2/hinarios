@@ -28,12 +28,14 @@ void main() {
 
     vm.setQuery('terra');
     expect(vm.emBusca, isTrue);
-    expect(vm.resultados.map((h) => h.nome), ['Três']);
+    expect(vm.resultados.map((r) => r.hino.nome), ['Três']);
+    // 'terra' só existe na letra: o VM expõe o trecho para a lista compacta.
+    expect(vm.resultados.single.trecho, isNotNull);
 
     pref.toggleFavorito('a/3/tres');
     vm.toggleSoFavoritos();
     vm.setQuery('');
-    expect(vm.resultados.map((h) => h.nome), ['Três']); // só favorito
+    expect(vm.resultados.map((r) => r.hino.nome), ['Três']); // só favorito
 
     vm.toggleSoFavoritos();
     expect(vm.resultados, hasLength(5)); // fixture do repo tem 5 hinos

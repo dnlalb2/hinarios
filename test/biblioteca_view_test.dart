@@ -34,12 +34,15 @@ class HinosServiceColetivoFake implements HinosService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Future<Widget> montar({HinosService? service}) async {
+  Future<Widget> montar({HinosService? service, List<String> favoritos = const []}) async {
     SharedPreferences.setMockInitialValues({});
     final repo = HinosRepository(service: service ?? HinosServiceFake());
     await repo.carregar();
     final pref = PreferenciasViewModel(service: PreferenciasService());
     await pref.restaurar();
+    for (final slug in favoritos) {
+      pref.toggleFavorito(slug);
+    }
     final vm = BibliotecaViewModel(hinos: repo, preferencias: pref);
     return MultiProvider(
       providers: [
@@ -61,12 +64,56 @@ void main() {
     expect(find.text('Hinário X'), findsOneWidget);
   });
 
-  testWidgets('busca troca a lista por resultados', (tester) async {
+  testWidgets('busca troca a lista por resultados compactos', (tester) async {
     await tester.pumpWidget(await montar());
     await tester.enterText(find.byType(TextField), 'terra');
     await tester.pumpAndSettle();
-    expect(find.text('1. Três'), findsOneWidget);
     expect(find.byType(ExpansionTile), findsNothing);
+    expect(find.text('1. Três'), findsOneWidget);
+    // Resultado é um ListTile compacto — a letra inteira NÃO é despejada.
+    expect(find.byType(BlocoHino), findsNothing);
+    expect(find.text('Hinos (1)'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, '1. Três'), findsOneWidget);
+    expect(find.text('A · Hinário X'), findsOneWidget); // autor · hinário
+    // 'terra' casou a LETRA: o trecho aparece com o termo destacado.
+    final rich = tester.widget<Text>(find.textContaining('Terra'));
+    final spans = (rich.textSpan! as TextSpan).children!.cast<TextSpan>();
+    expect(spans.map((s) => s.text), ['', 'Terra', ' e mar']);
+    expect(spans[1].style!.fontWeight, FontWeight.w600);
+    expect(spans[1].style!.color,
+        Theme.of(tester.element(find.byType(BibliotecaView))).colorScheme.primary);
+    expect(rich.maxLines, 2); // trecho longo não estica a linha
+  });
+
+  testWidgets('tocar num resultado abre a página do hino', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '1. Três'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlocoHino), findsOneWidget); // a página do hino, inteira
+    expect(find.byTooltip('Favorito'), findsOneWidget);
+    expect(find.text('ver no hinário'), findsOneWidget);
+  });
+
+  testWidgets('só favoritos (sem busca) segue com os BlocoHino completos', (tester) async {
+    await tester.pumpWidget(await montar(favoritos: ['a/3/tres']));
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlocoHino), findsOneWidget);
+    expect(find.text('1. Três'), findsOneWidget);
+    expect(find.text('Hinos (1)'), findsNothing); // lista de leitura, não de busca
+  });
+
+  testWidgets('busca + só favoritos também usa a lista compacta', (tester) async {
+    await tester.pumpWidget(await montar(favoritos: ['a/3/tres']));
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BlocoHino), findsNothing);
+    expect(find.text('Hinos (1)'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, '1. Três'), findsOneWidget);
   });
 
   testWidgets('busca sem acento mostra a seção Hinários e navega para o grupo', (tester) async {
@@ -79,9 +126,11 @@ void main() {
     // chips do BlocoHino. 'Hinário X' aparece UMA vez (o grupo de A e B juntos).
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsOneWidget);
     expect(find.text('Diversos · 3 hinos'), findsOneWidget); // subtítulo do 1º
-    // Os hinos que casam continuam logo abaixo da seção de grupos.
-    expect(find.text('2. Um'), findsOneWidget);
-    expect(tester.getTopLeft(find.byType(BlocoHino).first).dy,
+    // Os hinos que casam continuam logo abaixo da seção de grupos, agora
+    // como resultados compactos.
+    expect(find.text('Hinos (5)'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, '2. Um'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('2. Um')).dy,
         greaterThan(tester.getTopLeft(find.byType(Divider)).dy));
     await tester.tap(find.widgetWithText(ListTile, 'Hinário X').first);
     await tester.pumpAndSettle();
