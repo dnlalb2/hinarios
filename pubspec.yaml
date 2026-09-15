@@ -37,6 +37,8 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.3.2
   flutter_svg: ^2.0.10
+  # Acesso ao DOM na web (meta theme-color). Usado só via import condicional.
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
