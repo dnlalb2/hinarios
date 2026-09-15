@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../domain/models/hino.dart';
 import '../../../domain/use_cases/alinhamento.dart';
 import '../../../domain/use_cases/transposicao.dart';
+import '../cifras_locais_view_model.dart';
 import '../preferencias_view_model.dart';
+import '../../features/hino/editor_cifra_view.dart';
 import '../../features/hino/partitura.dart';
 
 class BlocoHino extends StatelessWidget {
@@ -16,6 +18,12 @@ class BlocoHino extends StatelessWidget {
     final vm = context.watch<PreferenciasViewModel>();
     final shift = vm.deslocamentoDe(hino.slug);
     final tamanhoFonte = vm.tamanhoFonte;
+    // Cifra própria do usuário tem precedência sobre a oficial: foi ele quem
+    // a escreveu para ESTE hino (removê-la devolve a oficial, quando existe).
+    final local = context.watch<CifrasLocaisViewModel>().cifraDe(hino.slug);
+    final cifra = local == null
+        ? hino.cifra
+        : Cifra(tom: local.tom, texto: local.textoCifra(hino.letra));
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -57,12 +65,12 @@ class BlocoHino extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            if (hino.cifra != null)
+            if (cifra != null)
               Row(
                 children: [
                   Text('Cifra em ',
                       style: TextStyle(fontSize: tamanhoFonte * 0.8, color: Theme.of(context).hintColor)),
-                  Text(transporAcorde(hino.cifra!.tom, shift),
+                  Text(transporAcorde(cifra.tom, shift),
                       style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                   IconButton(
                     icon: const Icon(Icons.remove_circle_outline),
@@ -74,21 +82,37 @@ class BlocoHino extends StatelessWidget {
                     tooltip: 'Meio tom acima',
                     onPressed: () => vm.transpor(hino.slug, 1),
                   ),
+                  if (local != null)
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      tooltip: 'Editar cifra',
+                      onPressed: () => abrirEditorCifra(context, hino),
+                    ),
                 ],
               ),
-            if (hino.cifra != null) ..._linhasCifra(context, hino, shift, tamanhoFonte),
+            if (cifra != null) ..._linhasCifra(context, cifra, hino.letra, shift, tamanhoFonte),
             const SizedBox(height: 6),
             // Com cifra, a letra já aparece intercalada com os acordes —
             // renderizar de novo duplicaria a música inteira.
-            if (hino.cifra == null)
+            if (cifra == null) ...[
               Text(hino.letra, style: TextStyle(fontSize: tamanhoFonte, height: 1.5)),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.music_note, size: 18),
+                  label: const Text('Adicionar cifra'),
+                  onPressed: () => abrirEditorCifra(context, hino),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _linhasCifra(BuildContext context, Hino hino, int shift, double tamanhoFonte) {
+  List<Widget> _linhasCifra(
+      BuildContext context, Cifra cifra, String letra, int shift, double tamanhoFonte) {
     // Cifra e letra acompanham o tamanho escolhido em Configurações
     // (mesma proporção 16px de referência usada pelo resto do bloco).
     final escala = tamanhoFonte / 16;
@@ -107,7 +131,7 @@ class BlocoHino extends StatelessWidget {
       height: 1.4,
     );
     return [
-      for (final par in alinhar(hino.letra, hino.cifra!.texto))
+      for (final par in alinhar(letra, cifra.texto))
         if (par.texto.isNotEmpty || par.acordes != null)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

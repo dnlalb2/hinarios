@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hinarios_app/data/services/cifras_locais_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
+import 'package:hinarios_app/domain/models/cifra_local.dart';
 import 'package:hinarios_app/domain/models/hino.dart';
+import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 
@@ -17,8 +20,13 @@ void main() {
     return vm;
   }
 
-  Widget montar(PreferenciasViewModel vm, Hino h) => ChangeNotifierProvider.value(
-        value: vm,
+  Widget montar(PreferenciasViewModel vm, Hino h, {CifrasLocaisViewModel? cifras}) =>
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: vm),
+          ChangeNotifierProvider.value(
+              value: cifras ?? CifrasLocaisViewModel(service: CifrasLocaisService())),
+        ],
         child: MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BlocoHino(hino: h)))),
       );
 
@@ -35,6 +43,12 @@ void main() {
     cifra: Cifra(tom: 'D', texto: 'D Bm; A D'),
   );
 
+  final semCifra = Hino(
+    slug: 'a/2/sem-cifra', num: 2, nome: 'Sem Cifra', autor: 'A',
+    autorFull: 'A', hinario: 'H', urlhinario: 'h', ritmo: '',
+    letra: 'Só a letra',
+  );
+
   testWidgets('mostra título, letra e acordes acima', (tester) async {
     await tester.pumpWidget(montar(await vmNovo(), hino));
     expect(find.textContaining('Sol, Lua, Estrela'), findsWidgets);
@@ -49,11 +63,6 @@ void main() {
   testWidgets('com cifra a letra aparece só uma vez', (tester) async {
     await tester.pumpWidget(montar(await vmNovo(), hino));
     expect(find.text(hino.letra), findsNothing); // texto multilinha duplicado
-    final semCifra = Hino(
-      slug: 'a/2/sem-cifra', num: 2, nome: 'Sem Cifra', autor: 'A',
-      autorFull: 'A', hinario: 'H', urlhinario: 'h', ritmo: '',
-      letra: 'Só a letra',
-    );
     await tester.pumpWidget(montar(await vmNovo(), semCifra));
     expect(find.text('Só a letra'), findsOneWidget); // sem cifra, letra normal
   });
@@ -111,6 +120,38 @@ void main() {
     expect(find.text('D# A# D#'), findsOneWidget);
     expect(find.text('Cm Gm Cm'), findsOneWidget);
     expect(find.text('Fm   A#   D#'), findsOneWidget); // runs de NBSP viram espaços
+  });
+
+  // Fase 1 das cifras próprias: ~2000 hinos do acervo não têm cifra — o
+  // convite para escrever uma fica logo abaixo da letra.
+  testWidgets('hino sem cifra: botão Adicionar cifra abre o editor', (tester) async {
+    await tester.pumpWidget(montar(await vmNovo(), semCifra));
+    expect(find.text('Só a letra'), findsOneWidget);
+    expect(find.byIcon(Icons.edit), findsNothing); // nada para editar ainda
+    await tester.tap(find.text('Adicionar cifra'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cifra — Sem Cifra'), findsOneWidget); // editor aberto
+  });
+
+  // Cifra própria tem precedência sobre a oficial E entra na mesma
+  // transposição (mesmo caminho de renderização das cifras do acervo).
+  testWidgets('cifra local renderiza acordes transponíveis e o lápis', (tester) async {
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['D Bm']));
+    await tester.pumpWidget(montar(await vmNovo(), semCifra, cifras: cifras));
+
+    expect(find.text('D Bm'), findsOneWidget); // acordes acima da letra
+    expect(find.text('Só a letra'), findsOneWidget); // letra sem duplicar
+    expect(find.text('Adicionar cifra'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pump();
+    expect(find.text('D# Cm'), findsOneWidget); // meio tom acima, como nas oficiais
+
+    await tester.tap(find.byIcon(Icons.edit));
+    await tester.pumpAndSettle();
+    expect(find.text('Cifra — Sem Cifra'), findsOneWidget);
+    expect(find.text('D Bm'), findsOneWidget); // campo preenchido (tom original)
   });
 
   testWidgets('estrela alterna favorito', (tester) async {

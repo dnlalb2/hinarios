@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'data/repositories/hinos_repository.dart';
+import 'data/services/cifras_locais_service.dart';
 import 'data/services/hinos_service.dart';
 import 'data/services/preferencias_service.dart';
+import 'ui/core/cifras_locais_view_model.dart';
 import 'ui/core/preferencias_view_model.dart';
 import 'ui/core/theme_color.dart';
 import 'ui/core/tema.dart';
@@ -14,22 +16,35 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferencias = PreferenciasViewModel(service: PreferenciasService());
   await preferencias.restaurar();
+  final cifrasLocais = CifrasLocaisViewModel(service: CifrasLocaisService());
+  await cifrasLocais.restaurar();
   final hinosRepo = HinosRepository(service: HinosService());
   await hinosRepo.carregar();
-  runApp(HinariosApp(preferencias: preferencias, hinosRepository: hinosRepo));
+  runApp(HinariosApp(
+    preferencias: preferencias,
+    hinosRepository: hinosRepo,
+    cifrasLocais: cifrasLocais,
+  ));
 }
 
 class HinariosApp extends StatelessWidget {
-  const HinariosApp({super.key, required this.preferencias, required this.hinosRepository});
+  const HinariosApp({
+    super.key,
+    required this.preferencias,
+    required this.hinosRepository,
+    required this.cifrasLocais,
+  });
 
   final PreferenciasViewModel preferencias;
   final HinosRepository hinosRepository;
+  final CifrasLocaisViewModel cifrasLocais;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: preferencias),
+        ChangeNotifierProvider.value(value: cifrasLocais),
         Provider<HinosRepository>.value(value: hinosRepository),
         ChangeNotifierProvider<BibliotecaViewModel>(
           create: (_) => BibliotecaViewModel(hinos: hinosRepository, preferencias: preferencias),

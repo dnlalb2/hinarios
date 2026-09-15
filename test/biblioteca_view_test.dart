@@ -5,8 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hinarios_app/data/repositories/hinos_repository.dart';
+import 'package:hinarios_app/data/services/cifras_locais_service.dart';
 import 'package:hinarios_app/data/services/hinos_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
+import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 import 'package:hinarios_app/ui/features/biblioteca/biblioteca_view.dart';
@@ -51,6 +53,9 @@ void main() {
       providers: [
         ChangeNotifierProvider.value(value: pref),
         ChangeNotifierProvider.value(value: vm),
+        // o BlocoHino lê as cifras próprias do usuário
+        ChangeNotifierProvider.value(
+            value: CifrasLocaisViewModel(service: CifrasLocaisService())),
         Provider<HinosRepository>.value(value: repo), // navegação para o HinarioView
       ],
       child: const MaterialApp(home: BibliotecaView()),

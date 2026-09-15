@@ -4,8 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hinarios_app/data/services/cifras_locais_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
 import 'package:hinarios_app/domain/models/hino.dart';
+import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 
@@ -26,8 +28,13 @@ void main() {
     final vm = PreferenciasViewModel(service: PreferenciasService());
     await vm.restaurar();
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: vm,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: vm),
+          // o BlocoHino lê as cifras próprias do usuário
+          ChangeNotifierProvider.value(
+              value: CifrasLocaisViewModel(service: CifrasLocaisService())),
+        ],
         child: MaterialApp(home: Scaffold(body: BlocoHino(hino: hino))),
       ),
     );
