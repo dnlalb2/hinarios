@@ -14,10 +14,42 @@ void main() {
     expect(volta.acordesPorLinha, isEmpty);
   });
 
-  test('toJson nunca escreve o campo legado', () {
+  // MIGRADA (com texto): o campo legado NUNCA vai para o disco — nem se a
+  // lista ainda estiver no objeto (o editor grava CifraLocal(tom:, texto:)).
+  test('toJson de uma cifra migrada não escreve o campo legado', () {
     const cifra = CifraLocal(tom: 'D', texto: '[D]Um');
     expect(cifra.toJson(), {'tom': 'D', 'texto': '[D]Um'});
     expect(cifra.toJson().containsKey('acordes'), isFalse);
+
+    const comResto = CifraLocal(tom: 'D', texto: '[D]Um', acordesPorLinha: ['  D']);
+    expect(comResto.toJson().containsKey('acordes'), isFalse);
+  });
+
+  // NÃO MIGRADA: uma cifra que só existe no formato antigo (nunca aberta no
+  // editor) é regravada com os acordes. O _persistir do view model regrava o
+  // mapa inteiro — sem isto, salvar OUTRA cifra apagaria estes acordes.
+  test('toJson de uma cifra legada preserva os acordes', () {
+    final legada = CifraLocal.fromJson(const {
+      'tom': 'D',
+      'acordes': ['   Am   E7', 'A'],
+    });
+    expect(legada.toJson(), {
+      'tom': 'D',
+      'texto': '',
+      'acordes': ['   Am   E7', 'A'],
+    });
+  });
+
+  // Round-trip do que fica no disco para uma cifra ainda não migrada: os
+  // acordes continuam lá (e o editor migra depois, ao salvar).
+  test('round-trip de uma cifra legada não perde os acordes', () {
+    const acordes = ['   Am   E7', 'A'];
+    const legada = CifraLocal(tom: 'D', acordesPorLinha: acordes);
+    final volta = CifraLocal.fromJson(
+        jsonDecode(jsonEncode(legada.toJson())) as Map<String, dynamic>);
+    expect(volta.texto, '');
+    expect(volta.acordesPorLinha, acordes);
+    expect(volta.textoChordPro('Só a letra'), 'Só [Am]a let[E7]ra');
   });
 
   test('fromJson tolera campos ausentes/estranhos', () {

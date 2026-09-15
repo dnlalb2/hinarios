@@ -21,8 +21,17 @@ class CifraLocal {
     this.acordesPorLinha = const [],
   });
 
-  /// Formato novo. O legado NUNCA é gravado: quem salva migra.
-  Map<String, dynamic> toJson() => {'tom': tom, 'texto': texto};
+  /// Formato novo. Numa cifra já migrada (com [texto]) o campo legado NUNCA é
+  /// gravado: quem salva migra. Mas uma cifra que só existe no formato antigo é
+  /// regravada COM os acordes — sem a letra não há como convertê-la aqui (quem
+  /// migra é o editor), e o `_persistir` do view model regrava o mapa inteiro:
+  /// salvar OUTRA cifra apagaria os acordes desta.
+  Map<String, dynamic> toJson() => {
+        'tom': tom,
+        'texto': texto,
+        if (texto.isEmpty && acordesPorLinha.isNotEmpty)
+          'acordes': acordesPorLinha,
+      };
 
   /// Aceita os dois formatos: `{'tom', 'texto'}` (novo) e
   /// `{'tom', 'acordes': [...]}` (legado, de onde veio).

@@ -42,6 +42,33 @@ void main() {
     expect(vm.cifraDe('a/1/um')!.textoChordPro('Só a letra'), 'Só [Am]a let[E7]ra');
   });
 
+  // Sem perda no disco: o _persistir regrava o mapa INTEIRO. Salvar outra
+  // cifra não pode apagar os acordes de uma cifra legada que o usuário ainda
+  // não abriu no editor (quem migra é o editor, ao salvar).
+  test('salvar outra cifra não apaga os acordes de uma cifra legada', () async {
+    SharedPreferences.setMockInitialValues({
+      'hinario.cifras_locais': jsonEncode({
+        'a/1/legado': {
+          'tom': 'D',
+          'acordes': ['   Am   E7', 'A'],
+        },
+      }),
+    });
+    final service = CifrasLocaisService();
+    final vm = CifrasLocaisViewModel(service: service);
+    await vm.restaurar();
+    vm.salvar('a/2/outro', cifra('G', '[G]Um'));
+    await Future<void>.delayed(Duration.zero);
+
+    final vm2 = CifrasLocaisViewModel(service: service);
+    await vm2.restaurar();
+    expect(vm2.cifraDe('a/2/outro')!.texto, '[G]Um');
+    expect(vm2.cifraDe('a/1/legado')!.texto, '');
+    expect(vm2.cifraDe('a/1/legado')!.acordesPorLinha, ['   Am   E7', 'A']);
+    expect(vm2.cifraDe('a/1/legado')!.textoChordPro('Só a letra'),
+        'Só [Am]a let[E7]ra');
+  });
+
   test('salvar notifica e a visão é imutável', () {
     SharedPreferences.setMockInitialValues({});
     final vm = CifrasLocaisViewModel(service: CifrasLocaisService());
