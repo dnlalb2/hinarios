@@ -105,16 +105,26 @@ class HinosRepository {
           }
         }
       }
-      // 4. Ordenação: autores e rótulos alfabéticos; hinos por num (tie-break nome).
+      // 4. Ordenação: autores e rótulos alfabéticos SEM acento (senão
+      //    'Índio'/'João' caem no fim, depois de todo nome sem acento);
+      //    hinos por num (tie-break nome).
       final ordenado = <String, List<Hino>>{};
-      for (final rotulo in comRotulo.keys.toList()..sort()) {
+      for (final rotulo in comRotulo.keys.toList()
+        ..sort((a, b) {
+          final c = _normalizar(a).compareTo(_normalizar(b));
+          return c != 0 ? c : a.compareTo(b);
+        })) {
         final lista = comRotulo[rotulo]!
           ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
         ordenado[rotulo] = lista;
       }
       resultado[autor] = ordenado;
     }
-    final autores = resultado.keys.toList()..sort();
+    final autores = resultado.keys.toList()
+      ..sort((a, b) {
+        final c = _normalizar(a).compareTo(_normalizar(b));
+        return c != 0 ? c : a.compareTo(b);
+      });
     return _gruposCache = <String, Map<String, List<Hino>>>{
       for (final autor in autores) autor: resultado[autor]!,
     };

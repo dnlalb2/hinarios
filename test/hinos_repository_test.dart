@@ -91,6 +91,33 @@ class HinosServiceRotulosFake implements HinosService {
       ]);
 }
 
+/// Fixture LOCAL (não mexe na compartilhada) com autores e rótulos acentuados
+/// que o sort cru joga para o fim: 'Índio' ('Í' = U+00CD > 'J' = U+004A),
+/// 'Hino Índio' (o 'Í' do meio vence a comparação com 'Hino Jardim').
+/// Ordenado por code point cru viria ['Jardim', 'Índio'] e
+/// ['Hino Jardim', 'Hino Índio']; normalizado vem 'Índio'/'Hino Índio' antes.
+class HinosServiceAutoresFake implements HinosService {
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        {
+          'slug': 'i/1/indio', 'num': 1, 'nome': 'Hino Um', 'autor': 'Índio',
+          'autor_full': 'Índio', 'hinario': 'Hino Índio', 'urlhinario': 'ind',
+          'ritmo': '', 'letra': 'Letra do Um',
+        },
+        {
+          'slug': 'j/1/jardim', 'num': 1, 'nome': 'Hino Dois', 'autor': 'Jardim',
+          'autor_full': 'Jardim', 'hinario': 'Hino Jardim', 'urlhinario': 'jar',
+          'ritmo': '', 'letra': 'Letra do Dois',
+        },
+        // Mesmo autor 'Jardim', outra url (ind2): grupo próprio, rótulo 'Hino Índio'.
+        {
+          'slug': 'j/2/indio', 'num': 2, 'nome': 'Hino Três', 'autor': 'Jardim',
+          'autor_full': 'Jardim', 'hinario': 'Hino Índio', 'urlhinario': 'ind2',
+          'ritmo': '', 'letra': 'Letra do Três',
+        },
+      ]);
+}
+
 void main() {
   test('carregar parseia e cacheia (service chamado uma vez)', () async {
     final service = HinosServiceFake();
@@ -127,6 +154,17 @@ void main() {
     expect(g['A']!['Hinário X (z)']!.map((x) => x.num), [5]);
     expect(g['A']!['Hinário X']!.map((x) => x.num), [1, 2]);
     expect(g['A']!['Hinário X']!.length, greaterThan(g['A']!['Hinário X (z)']!.length));
+  });
+
+  test('agrupar: autores e rótulos ordenados sem acento (não code point)', () async {
+    final repo = HinosRepository(service: HinosServiceAutoresFake());
+    await repo.carregar();
+    final g = repo.agrupar();
+    // Code point cru daria ['Jardim', 'Índio'] ('Í' U+00CD > 'J' U+004A);
+    // normalizado, 'indio' < 'jardim' → 'Índio' primeiro.
+    expect(g.keys, ['Índio', 'Jardim']);
+    // Idem intra-autor: cru daria ['Hino Jardim', 'Hino Índio'].
+    expect(g['Jardim']!.keys, ['Hino Índio', 'Hino Jardim']);
   });
 
   test('buscar: tokens todos presentes; ignora maiúsculas; tom conta', () async {
