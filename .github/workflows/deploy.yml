@@ -36,7 +36,10 @@ jobs:
         run: flutter test
 
       - name: Build web (release)
-        run: flutter build web --release --base-href=/${{ github.event.repository.name }}/
+        # --no-web-resources-cdn empacota o CanvasKit localmente — sem ele o
+        # app carrega o motor de renderização de www.gstatic.com e fica em
+        # tela branca quando offline (PWA).
+        run: flutter build web --release --no-web-resources-cdn --base-href=/${{ github.event.repository.name }}/
 
       - uses: actions/upload-pages-artifact@v3
         with:
