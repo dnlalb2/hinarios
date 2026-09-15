@@ -89,8 +89,8 @@ class _BibliotecaViewState extends State<BibliotecaView> {
                   showSelectedIcon: false,
                   style: const ButtonStyle(visualDensity: VisualDensity.compact),
                   segments: const [
-                    ButtonSegment(value: true, label: Text('Autores')),
                     ButtonSegment(value: false, label: Text('Hinários')),
+                    ButtonSegment(value: true, label: Text('Autores')),
                   ],
                   selected: {vm.visaoPorAutor},
                   onSelectionChanged: (_) => vm.alternarVisao(),

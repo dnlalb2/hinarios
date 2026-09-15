@@ -57,8 +57,20 @@ void main() {
     );
   }
 
+  // Rótulo dentro do seletor de visão (a AppBar também tem um 'Hinários').
+  Finder segmento(String rotulo) => find.descendant(
+      of: find.byType(SegmentedButton<bool>), matching: find.text(rotulo));
+
+  /// 'Autores' é o 2º segmento: a árvore só aparece depois de tocar nele
+  /// (o padrão da home é a lista plana de hinários).
+  Future<void> irParaAutores(WidgetTester tester) async {
+    await tester.tap(segmento('Autores'));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('mostra autores; expandir revela hinários', (tester) async {
     await tester.pumpWidget(await montar());
+    await irParaAutores(tester);
     expect(find.text('A'), findsOneWidget);
     expect(find.text('B'), findsOneWidget);
     expect(find.text('Hinário X'), findsNothing); // colapsado
@@ -155,6 +167,7 @@ void main() {
 
   testWidgets('tocar no hinário abre a página do hinário', (tester) async {
     await tester.pumpWidget(await montar());
+    await irParaAutores(tester);
     await tester.tap(find.text('A'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hinário X'));
@@ -165,19 +178,11 @@ void main() {
     expect(find.text('Diversos · 3 hinos'), findsOneWidget); // cabeçalho do grupo
   });
 
-  // Rótulo dentro do seletor de visão (a AppBar também tem um 'Hinários').
-  Finder segmento(String rotulo) => find.descendant(
-      of: find.byType(SegmentedButton<bool>), matching: find.text(rotulo));
-
   testWidgets('visão Hinários: lista plana por nome e navega', (tester) async {
     await tester.pumpWidget(await montar());
     expect(find.byType(SegmentedButton<bool>), findsOneWidget);
-    expect(find.byType(ExpansionTile), findsWidgets); // padrão: árvore
+    expect(find.byType(ExpansionTile), findsNothing); // padrão: lista plana
 
-    await tester.tap(segmento('Hinários'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ExpansionTile), findsNothing); // árvore deu lugar à lista
     // UM grupo global por hinário: 'Hinário X' (A+B juntos), 'X (z)' e 'Y'.
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsOneWidget);
     expect(find.text('Diversos · 3 hinos'), findsOneWidget); // subtítulo do 1º
@@ -195,14 +200,17 @@ void main() {
 
   testWidgets('voltar para Autores restaura a árvore', (tester) async {
     await tester.pumpWidget(await montar());
+    expect(find.byType(ExpansionTile), findsNothing); // padrão: lista plana
+    expect(find.text('Hinário X'), findsOneWidget);
+
+    await irParaAutores(tester);
+    expect(find.byType(ExpansionTile), findsWidgets);
+    expect(find.text('Hinário X'), findsNothing); // árvore colapsada
+
     await tester.tap(segmento('Hinários'));
     await tester.pumpAndSettle();
-    expect(find.byType(ExpansionTile), findsNothing);
-
-    await tester.tap(segmento('Autores'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ExpansionTile), findsWidgets);
-    expect(find.text('Hinário X'), findsNothing); // árvore colapsada de novo
+    expect(find.byType(ExpansionTile), findsNothing); // árvore deu lugar à lista
+    expect(find.widgetWithText(ListTile, 'Hinário X'), findsOneWidget);
   });
 
   testWidgets('em busca (ou só favoritos) o seletor de visão não aparece', (tester) async {
@@ -246,6 +254,7 @@ void main() {
 
   testWidgets('cabeçalho do autor conta só os hinos dele no coletivo', (tester) async {
     await tester.pumpWidget(await montar(service: HinosServiceColetivoFake()));
+    await irParaAutores(tester);
 
     await tester.tap(find.text('X1'));
     await tester.pumpAndSettle();
@@ -264,6 +273,7 @@ void main() {
 
   testWidgets('hinário coletivo: aparece sob cada autor e mostra Diversos', (tester) async {
     await tester.pumpWidget(await montar(service: HinosServiceColetivoFake()));
+    await irParaAutores(tester);
 
     // Árvore: 'col' (autores X1 e X2) é UM grupo global sob CADA autor, com os
     // 2 hinos — antes fragmentava num grupo de 1 hino por autor.
@@ -291,6 +301,7 @@ void main() {
 
   testWidgets('estrela no tile da árvore favorita o hinário sem abri-lo', (tester) async {
     await tester.pumpWidget(await montar());
+    await irParaAutores(tester);
     await tester.tap(find.text('A')); // expande o autor
     await tester.pumpAndSettle();
 
@@ -307,8 +318,7 @@ void main() {
 
   testWidgets('estrela no tile da lista plana favorita o grupo', (tester) async {
     await tester.pumpWidget(await montar());
-    await tester.tap(segmento('Hinários'));
-    await tester.pumpAndSettle();
+    expect(find.byType(ExpansionTile), findsNothing); // padrão: lista plana
 
     final tile = find.widgetWithText(ListTile, 'Hinário X');
     await tester.tap(
@@ -322,6 +332,7 @@ void main() {
   testWidgets('só favoritos: seção Hinários + hinos favoritos completos', (tester) async {
     await tester.pumpWidget(await montar(favoritos: ['a/3/tres']));
     // Favorita o hinário pela estrela da árvore.
+    await irParaAutores(tester);
     await tester.tap(find.text('A'));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(

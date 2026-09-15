@@ -14,8 +14,9 @@ class BibliotecaViewModel extends ChangeNotifier {
   String _query = '';
   bool _soFavoritos = false;
   /// Visão da home: `true` = árvore por autor; `false` = lista plana por nome.
-  /// Só de sessão — não é persistida nas preferências.
-  bool _visaoPorAutor = true;
+  /// O padrão é a lista plana ('Hinários', 1º segmento). Só de sessão — não é
+  /// persistida nas preferências.
+  bool _visaoPorAutor = false;
 
   String get query => _query;
   bool get soFavoritos => _soFavoritos;
