@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../domain/models/cifra_local.dart';
 import '../../../domain/models/hino.dart';
 import '../../core/cifras_locais_view_model.dart';
+import '../../core/preferencias_view_model.dart';
 
 /// Mesma lista de tons usada pela transposição do acervo (12 maiores + 12
 /// menores): o tom escolhido aqui precisa ser transponível como nas oficiais.
@@ -125,6 +126,13 @@ class _EditorCifraViewState extends State<EditorCifraView> {
   @override
   Widget build(BuildContext context) {
     final corDica = Theme.of(context).hintColor;
+    // O formulário é um preview 1:1 da exibição: acordes e a régua de letra
+    // acima de cada campo usam a MESMA métrica monoespaçada e o MESMO tamanho
+    // do bloco do hino. Em fonte proporcional (default do TextField) o usuário
+    // posiciona o acorde contando colunas que não existem e a cifra sai
+    // desalinhada na exibição.
+    final tamanhoFonte = context.read<PreferenciasViewModel>().tamanhoFonte;
+    final estiloMono = TextStyle(fontFamily: 'monospace', fontSize: tamanhoFonte);
     return Scaffold(
       appBar: AppBar(
         title: Text('Cifra — ${widget.hino.nome}'),
@@ -158,10 +166,11 @@ class _EditorCifraViewState extends State<EditorCifraView> {
           ),
           const SizedBox(height: 16),
           for (var i = 0; i < _linhas.length; i++) ...[
-            Text(_linhas[i], style: TextStyle(fontSize: 13, color: corDica)),
+            Text(_linhas[i], style: estiloMono.copyWith(color: corDica)),
             const SizedBox(height: 4),
             TextField(
               controller: _controllers[i],
+              style: estiloMono,
               decoration: const InputDecoration(
                 hintText: 'acordes desta linha',
                 isDense: true,

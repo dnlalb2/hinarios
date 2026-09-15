@@ -113,22 +113,21 @@ class BlocoHino extends StatelessWidget {
 
   List<Widget> _linhasCifra(
       BuildContext context, Cifra cifra, String letra, int shift, double tamanhoFonte) {
-    // Cifra e letra acompanham o tamanho escolhido em Configurações
-    // (mesma proporção 16px de referência usada pelo resto do bloco).
-    final escala = tamanhoFonte / 16;
+    // Cifra e letra usam a MESMA métrica: mesma família monoespaçada, mesmo
+    // tamanho (escolhido em Configurações) e mesma altura de linha. Assim uma
+    // coluna da linha de acordes é exatamente uma coluna da linha de letra e o
+    // acorde fica sobre a sílaba — inclusive com os espaços de posicionamento
+    // digitados no formulário.
     final estiloAcorde = Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontFamily: 'monospace',
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
-          fontSize: 13 * escala,
+          fontSize: tamanhoFonte,
+          height: 1.4,
         );
-    // Mesma família monoespaçada da linha de acordes, para as colunas
-    // letra/acorde se alinharem.
     final estiloLetra = estiloAcorde.copyWith(
       color: Theme.of(context).colorScheme.onSurface,
       fontWeight: FontWeight.w400,
-      fontSize: 14 * escala,
-      height: 1.4,
     );
     return [
       for (final par in alinhar(letra, cifra.texto))

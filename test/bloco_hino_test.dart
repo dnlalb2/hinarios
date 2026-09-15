@@ -68,16 +68,18 @@ void main() {
   });
 
   // Regressão I2: cifra e letra acompanham o tamanho de fonte escolhido
-  // (Configurações promete "Letra e cifra acompanham o tamanho escolhido").
-  testWidgets('cifra e letra escalam com o tamanho de fonte', (tester) async {
+  // (Configurações promete "Letra e cifra acompanham o tamanho escolhido") —
+  // e com o MESMO tamanho: um caractere da linha de acordes tem que ocupar a
+  // mesma coluna da linha de letra, senão o acorde não fica sobre a sílaba.
+  testWidgets('cifra e letra usam o mesmo tamanho de fonte', (tester) async {
     final vm = await vmNovo();
-    vm.setTamanhoFonte(28);
+    vm.setTamanhoFonte(22);
     await tester.pumpWidget(montar(vm, hino));
     final acorde = tester.widget<Text>(find.text('D Bm'));
-    expect(acorde.style!.fontSize, 13 * 28 / 16);
+    expect(acorde.style!.fontSize, 22); // = vm.tamanhoFonte, sem escala própria
     expect(acorde.style!.fontFamily, 'monospace');
     final letra = tester.widget<Text>(find.text('Sol, Lua, Estrela'));
-    expect(letra.style!.fontSize, 14 * 28 / 16);
+    expect(letra.style!.fontSize, acorde.style!.fontSize);
     expect(letra.style!.fontFamily, 'monospace'); // mesma fonte dos acordes
   });
 
@@ -163,6 +165,25 @@ void main() {
     await tester.pumpWidget(montar(await vmNovo(), semCifra, cifras: cifras));
 
     expect(find.text('   Am   E7'), findsOneWidget); // coluna preservada
+  });
+
+  // Regressão UX: "digito os espaços para posicionar o acorde no formulário,
+  // mas a exibição não bate". As colunas só batem se a linha de acordes e a
+  // de letra tiverem a MESMA métrica (família monoespaçada + mesmo tamanho),
+  // inclusive quando os espaços à esquerda empurram o acorde para a direita.
+  testWidgets('acorde com espaços à esquerda mantém a métrica da letra', (tester) async {
+    final vm = await vmNovo();
+    vm.setTamanhoFonte(22);
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['   Am']));
+    await tester.pumpWidget(montar(vm, semCifra, cifras: cifras));
+
+    final acorde = tester.widget<Text>(find.text('   Am'));
+    final letra = tester.widget<Text>(find.text('Só a letra'));
+    expect(acorde.style!.fontFamily, 'monospace');
+    expect(letra.style!.fontFamily, 'monospace');
+    expect(acorde.style!.fontSize, letra.style!.fontSize); // mesma coluna
+    expect(acorde.style!.fontSize, 22);
   });
 
   testWidgets('estrela alterna favorito', (tester) async {
