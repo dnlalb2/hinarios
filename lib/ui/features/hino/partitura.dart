@@ -23,9 +23,16 @@ void abrirPartitura(BuildContext context, Hino hino) {
         body: InteractiveViewer(
           maxScale: 5,
           child: Center(
-            child: SvgPicture.asset(
-              'assets/partituras/${slugDeArquivo(hino)}.svg',
-              fit: BoxFit.contain,
+            // A partitura é preta sobre transparência e some no tema escuro:
+            // a "folha" branca atrás do SVG garante a leitura (o resto do
+            // diálogo segue o tema).
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(12),
+              child: SvgPicture.asset(
+                'assets/partituras/${slugDeArquivo(hino)}.svg',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),

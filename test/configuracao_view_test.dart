@@ -26,6 +26,7 @@ void main() {
 
     await tester.drag(find.byType(Slider), const Offset(100, 0));
     await tester.pump();
-    expect(vm.tamanhoFonte, greaterThan(16));
+    // Padrão agora é 20; arrastar para a direita precisa aumentar de fato.
+    expect(vm.tamanhoFonte, greaterThan(20));
   });
 }

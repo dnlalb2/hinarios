@@ -35,5 +35,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(InteractiveViewer), findsOneWidget);
     expect(find.byType(SvgPicture), findsOneWidget);
+
+    // A partitura é preta sobre transparência: precisa de uma "folha" branca
+    // atrás do SVG para não sumir no tema escuro.
+    expect(
+      find.ancestor(
+        of: find.byType(SvgPicture),
+        matching: find.byWidgetPredicate(
+          (w) => w is ColoredBox && w.color == Colors.white,
+        ),
+      ),
+      findsOneWidget,
+    );
   });
 }

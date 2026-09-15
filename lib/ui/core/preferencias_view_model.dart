@@ -6,7 +6,7 @@ class PreferenciasViewModel extends ChangeNotifier {
 
   final PreferenciasService _service;
   bool _temaEscuro = false;
-  double _tamanhoFonte = 16;
+  double _tamanhoFonte = 20;
   final Set<String> _favoritos = {};
   final Set<String> _hinariosFavoritos = {};
   final Map<String, int> _deslocamentos = {};

@@ -10,7 +10,7 @@ class Preferencias {
   final Map<String, int> deslocamentos;
   const Preferencias({
     this.temaEscuro = false,
-    this.tamanhoFonte = 16,
+    this.tamanhoFonte = 20,
     this.favoritos = const {},
     this.hinariosFavoritos = const {},
     this.deslocamentos = const {},
@@ -55,9 +55,9 @@ class PreferenciasService {
   }
 
   /// O Slider de Configurações só aceita 12..28 — valor fora da faixa (ou
-  /// corrompido) dispara assert na tela. Sem valor, mantém o padrão 16.
+  /// corrompido) dispara assert na tela. Sem valor, mantém o padrão 20.
   double _fonteValida(double? valor) {
-    if (valor == null || valor.isNaN) return 16;
+    if (valor == null || valor.isNaN) return 20;
     return valor.clamp(12.0, 28.0);
   }
 

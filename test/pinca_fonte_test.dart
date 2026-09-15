@@ -28,14 +28,14 @@ void main() {
       tester,
       const SingleChildScrollView(child: SizedBox(height: 2000)),
     );
-    expect(vm.tamanhoFonte, 16);
+    expect(vm.tamanhoFonte, 20);
 
     final g1 = await tester.startGesture(const Offset(200, 300));
     final g2 = await tester.startGesture(const Offset(300, 300));
     await g1.moveTo(const Offset(100, 300));
     await g2.moveTo(const Offset(400, 300));
     await tester.pump();
-    expect(vm.tamanhoFonte, greaterThan(16));
+    expect(vm.tamanhoFonte, greaterThan(20));
 
     await g1.up();
     await g2.up();
@@ -54,7 +54,7 @@ void main() {
     await g2.moveTo(const Offset(400, 300));
     await tester.pump();
     final aposPinca = vm.tamanhoFonte;
-    expect(aposPinca, greaterThan(16));
+    expect(aposPinca, greaterThan(20));
     expect(aposPinca, lessThanOrEqualTo(28));
     await g1.up();
     await g2.up();

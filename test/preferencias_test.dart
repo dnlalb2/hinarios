@@ -85,7 +85,20 @@ void main() {
     SharedPreferences.setMockInitialValues({'hinario.toms': '{não é json'});
     final p = await PreferenciasService().restaurar();
     expect(p.deslocamentos, isEmpty);
-    expect(p.tamanhoFonte, 16);
+    expect(p.tamanhoFonte, 20);
+  });
+
+  // Padrão de fonte é 20 (era 16): vale para a VM recém-criada e para
+  // restaurar() sem nada gravado no disco.
+  test('fonte padrão é 20 com VM nova e com storage vazio', () async {
+    final vm = PreferenciasViewModel(service: PreferenciasService());
+    expect(vm.tamanhoFonte, 20);
+
+    await vm.restaurar();
+    expect(vm.tamanhoFonte, 20);
+
+    final p = await PreferenciasService().restaurar();
+    expect(p.tamanhoFonte, 20);
   });
 
   test('fonte fora da faixa é limitada a 12..28 (Slider não estoura)', () async {
