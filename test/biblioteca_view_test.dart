@@ -48,6 +48,32 @@ void main() {
     expect(find.byType(ExpansionTile), findsNothing);
   });
 
+  testWidgets('busca sem acento mostra a seção Hinários e navega para o grupo', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.enterText(find.byType(TextField), 'hinario'); // 'Hinário' sem acento
+    await tester.pumpAndSettle();
+    // AppBar + cabeçalho da seção de grupos.
+    expect(find.text('Hinários'), findsNWidgets(2));
+    // Tiles dos grupos (A: X, X (z), Y; B: X) — só ListTile, não os chips do BlocoHino.
+    expect(find.widgetWithText(ListTile, 'Hinário X'), findsNWidgets(2));
+    expect(find.text('A · 2 hinos'), findsOneWidget); // subtítulo do 1º grupo
+    await tester.tap(find.widgetWithText(ListTile, 'Hinário X').first);
+    await tester.pumpAndSettle();
+    expect(find.text('1. Três'), findsOneWidget); // hinos do grupo escolhido
+    expect(find.text('2. Um'), findsOneWidget);
+  });
+
+  testWidgets('só favoritos não mostra a seção de hinários', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.enterText(find.byType(TextField), 'hinario');
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, 'Hinário X'), findsNWidgets(2));
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hinários'), findsOneWidget); // só o AppBar
+    expect(find.widgetWithText(ListTile, 'Hinário X'), findsNothing);
+  });
+
   testWidgets('tocar no hinário abre a página do hinário', (tester) async {
     await tester.pumpWidget(await montar());
     await tester.tap(find.text('A'));

@@ -56,6 +56,7 @@ class BibliotecaView extends StatelessWidget {
             child: vm.emBusca || vm.soFavoritos
                 ? ListView(
                     children: [
+                      ..._secaoHinarios(context, vm),
                       for (final h in vm.resultados)
                         InkWell(
                           onTap: () => Navigator.push(
@@ -79,6 +80,40 @@ class BibliotecaView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Hinários que casam com a busca, acima dos hinos soltos. Só na busca
+  /// (não no filtro "só favoritos") e quando há grupos.
+  List<Widget> _secaoHinarios(BuildContext context, BibliotecaViewModel vm) {
+    if (!vm.emBusca || vm.soFavoritos) return const [];
+    final grupos = vm.hinariosEncontrados;
+    if (grupos.isEmpty) return const [];
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text('Hinários', style: Theme.of(context).textTheme.titleSmall),
+      ),
+      for (final grupo in grupos)
+        ListTile(
+          leading: const Icon(Icons.menu_book),
+          title: Text(grupo.rotulo),
+          subtitle: Text('${grupo.autor} · ${grupo.hinos.length} hinos'),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => HinarioViewModel(
+                  hinos: grupo.hinos,
+                  autor: grupo.autor,
+                  hinario: grupo.rotulo,
+                ),
+                child: HinarioView(autor: grupo.autor, hinario: grupo.rotulo),
+              ),
+            ),
+          ),
+        ),
+      const Divider(),
+    ];
   }
 
   Widget _arvore(BuildContext context, Map<String, Map<String, List<Hino>>> grupos) {

@@ -3,6 +3,30 @@ import 'dart:convert';
 import '../../domain/models/hino.dart';
 import '../services/hinos_service.dart';
 
+/// Grupo de hinos de um mesmo hinário (autor + rótulo) devolvido pela busca.
+class GrupoHinario {
+  final String autor;
+  final String rotulo; // rótulo do grupo (possivelmente com sufixo de colisão)
+  final List<Hino> hinos;
+  const GrupoHinario({required this.autor, required this.rotulo, required this.hinos});
+}
+
+// Normalização pt-BR sem NFD (não há API nativa): 26 substituições 1:1.
+const _acentos = 'áàâãäéèêëíìîïóòôõöúùûüçñýÿ';
+const _semAcento = 'aaaaaeeeeiiiiooooouuuucnyy';
+
+/// Minúsculas e sem acentos — o índice e a consulta passam por aqui, então
+/// 'chaveirao' acha 'Chaveirão'.
+String _normalizar(String texto) {
+  final minusculo = texto.toLowerCase();
+  final buffer = StringBuffer();
+  for (final char in minusculo.split('')) {
+    final i = _acentos.indexOf(char);
+    buffer.write(i == -1 ? char : _semAcento[i]);
+  }
+  return buffer.toString();
+}
+
 /// Fonte única de verdade dos hinários. Transforma o JSON bruto em
 /// domain models, cacheia e oferece agrupamento/busca/filtro.
 class HinosRepository {
@@ -10,10 +34,15 @@ class HinosRepository {
 
   final HinosService _service;
   List<Hino>? _hinos;
-  /// Índice de busca (nome+autor+hinário+letra+tom, minúsculo) construído uma
-  /// única vez em [carregar]. Sem ele, cada tecla digitada reconstruía ~3,4 MB
-  /// de strings para os 3087 hinos.
+  /// Índice de busca (nome+autor+hinário+letra+tom, minúsculo e sem acentos)
+  /// construído uma única vez em [carregar]. Sem ele, cada tecla digitada
+  /// reconstruía ~3,4 MB de strings para os 3087 hinos.
   List<String>? _indice;
+
+  static final _espacos = RegExp(r'\s+');
+
+  List<String> _tokens(String query) =>
+      _normalizar(query).split(_espacos).where((t) => t.isNotEmpty).toList();
 
   Future<List<Hino>> carregar() async {
     if (_hinos != null) return _hinos!;
@@ -24,13 +53,13 @@ class HinosRepository {
     return _hinos!;
   }
 
-  String _textoDeBusca(Hino h) => [
+  String _textoDeBusca(Hino h) => _normalizar([
         h.nome,
         h.autor,
         h.hinario,
         h.letra,
         if (h.cifra != null) h.cifra!.tom,
-      ].join(' ').toLowerCase();
+      ].join(' '));
 
   Map<String, Map<String, List<Hino>>> agrupar() {
     // 1. Identidade do hinário = urlhinario (hinos sem url: o nome).
@@ -100,7 +129,7 @@ class HinosRepository {
   }
 
   List<Hino> buscar(String query) {
-    final tokens = query.toLowerCase().split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    final tokens = _tokens(query);
     if (tokens.isEmpty) return _hinos!;
     final hinos = _hinos!;
     final indice = _indice!;
@@ -108,6 +137,29 @@ class HinosRepository {
       for (var i = 0; i < hinos.length; i++)
         if (tokens.every(indice[i].contains)) hinos[i],
     ];
+  }
+
+  /// Grupos (do agrupamento por urlhinario) cujo rótulo OU autor casam todos
+  /// os tokens da consulta (normalizada). Query vazia → lista vazia.
+  /// Sem índice pré-computado: são ~81 grupos.
+  List<GrupoHinario> buscarGrupos(String query) {
+    final tokens = _tokens(query);
+    if (tokens.isEmpty) return const [];
+    final grupos = agrupar();
+    final resultado = <GrupoHinario>[];
+    for (final autor in grupos.keys) {
+      for (final rotulo in grupos[autor]!.keys) {
+        final alvo = _normalizar('$rotulo $autor');
+        if (tokens.every(alvo.contains)) {
+          resultado.add(GrupoHinario(
+            autor: autor,
+            rotulo: rotulo,
+            hinos: grupos[autor]![rotulo]!,
+          ));
+        }
+      }
+    }
+    return resultado;
   }
 
   /// Chave de agrupamento do hino: urlhinario, ou o nome quando a url é vazia.

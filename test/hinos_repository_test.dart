@@ -109,6 +109,41 @@ void main() {
     expect(repo.buscar('nada que exista'), isEmpty);
   });
 
+  test('buscar: ignora acentos (normalização pt-BR)', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    // Caso real: 'chaveirao' precisa achar 'Chaveirão'.
+    expect(repo.buscar('tres').map((h) => h.nome), ['Três']);
+    expect(repo.buscar('TRÊS').map((h) => h.nome), ['Três']);
+    // 'hinario x' sem acento acha os hinos dos dois grupos de rótulo 'Hinário X'
+    expect(repo.buscar('hinario x').map((h) => h.nome), ['Um', 'Três', 'Quatro', 'Cinco']);
+  });
+
+  test('buscarGrupos: casa rótulo e autor, na ordem do agrupamento', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    expect(repo.buscarGrupos(''), isEmpty); // query vazia → lista vazia
+    expect(repo.buscarGrupos('zzz'), isEmpty);
+
+    // sem acento e minúsculo: os 4 grupos do fixture têm 'Hinário' no rótulo.
+    final grupos = repo.buscarGrupos('hinario');
+    expect(grupos.map((g) => '${g.autor}:${g.rotulo}'),
+        ['A:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y', 'B:Hinário X']);
+    expect(grupos.first, isA<GrupoHinario>());
+    expect(grupos.first.hinos.map((h) => h.nome), ['Três', 'Um']); // ordem por num
+    expect(repo.buscarGrupos('HINÁRIO'), hasLength(4)); // caixa/acento não importam
+  });
+
+  test('buscarGrupos: autor também casa; token é substring', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    expect(repo.buscarGrupos('y').map((g) => g.rotulo), ['Hinário Y']);
+    // 'a' é substring de todos os alvos (autor 'A') → casa todos os grupos.
+    expect(repo.buscarGrupos('a'), hasLength(4));
+    expect(repo.buscarGrupos('a x').map((g) => '${g.autor}:${g.rotulo}'),
+        ['A:Hinário X', 'A:Hinário X (z)', 'B:Hinário X']);
+  });
+
   test('hinosDoHinario: filtra e ordena por num', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();

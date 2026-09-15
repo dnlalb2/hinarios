@@ -21,6 +21,9 @@ class BibliotecaViewModel extends ChangeNotifier {
 
   Map<String, Map<String, List<Hino>>> get grupos => _hinos.agrupar();
 
+  /// Hinários (grupos) cujo rótulo ou autor casam com a busca.
+  List<GrupoHinario> get hinariosEncontrados => _hinos.buscarGrupos(_query);
+
   List<Hino> get resultados {
     var r = _hinos.buscar(_query);
     if (_soFavoritos) {
