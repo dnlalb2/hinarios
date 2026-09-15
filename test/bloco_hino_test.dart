@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -184,6 +185,40 @@ void main() {
     expect(letra.style!.fontFamily, 'monospace');
     expect(acorde.style!.fontSize, letra.style!.fontSize); // mesma coluna
     expect(acorde.style!.fontSize, 22);
+  });
+
+  // Pitch idêntico ao do editor: lá a régua e o campo usam letterSpacing 0
+  // (ver editor_cifra_view). Se a exibição herdar o letterSpacing do tema
+  // (bodyMedium = 0.25), a coluna N da exibição anda 0.25px por caractere em
+  // relação ao preview do formulário — o acorde sai do lugar combinado.
+  testWidgets('acordes e letra com letterSpacing 0 (pitch idêntico ao editor)', (tester) async {
+    final vm = await vmNovo();
+    vm.setTamanhoFonte(22);
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['   Am']));
+    await tester.pumpWidget(montar(vm, semCifra, cifras: cifras));
+
+    final acorde = find.text('   Am');
+    final letra = find.text('Só a letra');
+    // Declarado...
+    expect(tester.widget<Text>(acorde).style!.letterSpacing, 0);
+    expect(tester.widget<Text>(letra).style!.letterSpacing, 0);
+    // ...e EFETIVO (depois do merge com o DefaultTextStyle do tema).
+    final estiloAcorde = tester.renderObject<RenderParagraph>(acorde).text.style!;
+    final estiloLetra = tester.renderObject<RenderParagraph>(letra).text.style!;
+    expect(estiloAcorde.letterSpacing, 0);
+    expect(estiloLetra.letterSpacing, 0);
+
+    // Posicional: a coluna 3 (onde começa o 'Am') cai no MESMO x nas duas
+    // linhas — é a promessa "o acorde fica sobre a sílaba".
+    double coluna(Finder f, int i) =>
+        tester.getTopLeft(f).dx +
+        tester
+            .renderObject<RenderParagraph>(f)
+            .getBoxesForSelection(TextSelection(baseOffset: i, extentOffset: i + 1))
+            .first
+            .left;
+    expect(coluna(acorde, 3), coluna(letra, 3));
   });
 
   testWidgets('estrela alterna favorito', (tester) async {

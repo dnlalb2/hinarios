@@ -118,12 +118,18 @@ class BlocoHino extends StatelessWidget {
     // coluna da linha de acordes é exatamente uma coluna da linha de letra e o
     // acorde fica sobre a sílaba — inclusive com os espaços de posicionamento
     // digitados no formulário.
+    // letterSpacing 0 explícito: o bodyMedium do tema traz 0.25, um pitch
+    // DIFERENTE do letterSpacing 0 da régua/campo do editor — a coluna N da
+    // exibição anda 0.25px por caractere em relação ao preview do formulário
+    // (o "sai um pouco para a esquerda" que o usuário via). Zero dos dois
+    // lados = mesma coluna no formulário e na exibição.
     final estiloAcorde = Theme.of(context).textTheme.bodyMedium!.copyWith(
           fontFamily: 'monospace',
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
           fontSize: tamanhoFonte,
           height: 1.4,
+          letterSpacing: 0,
         );
     final estiloLetra = estiloAcorde.copyWith(
       color: Theme.of(context).colorScheme.onSurface,
