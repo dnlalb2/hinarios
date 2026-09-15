@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
+import '../../core/widgets/pinca_fonte.dart';
 import '../configuracao/configuracao_view.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
@@ -27,32 +28,34 @@ class HinoView extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          BlocoHino(hino: vm.hino),
-          if (vm.doHinario.isNotEmpty)
-            Center(
-              child: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider(
-                      create: (_) => HinarioViewModel(
-                        hinos: vm.doHinario,
-                        autor: vm.hino.autor,
-                        hinario: vm.hino.hinario,
-                      ),
-                      child: HinarioView(
-                        autor: vm.hino.autor,
-                        hinario: vm.hino.hinario,
+      body: PincaFonte(
+        child: ListView(
+          children: [
+            BlocoHino(hino: vm.hino),
+            if (vm.doHinario.isNotEmpty)
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChangeNotifierProvider(
+                        create: (_) => HinarioViewModel(
+                          hinos: vm.doHinario,
+                          autor: vm.hino.autor,
+                          hinario: vm.hino.hinario,
+                        ),
+                        child: HinarioView(
+                          autor: vm.hino.autor,
+                          hinario: vm.hino.hinario,
+                        ),
                       ),
                     ),
                   ),
+                  child: const Text('ver no hinário'),
                 ),
-                child: const Text('ver no hinário'),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

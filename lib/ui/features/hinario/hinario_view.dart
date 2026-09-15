@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
+import '../../core/widgets/pinca_fonte.dart';
 import '../configuracao/configuracao_view.dart';
 import 'hinario_view_model.dart';
 
@@ -27,15 +28,17 @@ class HinarioView extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text('$autor · ${vm.hinos.length} hinos',
-                style: Theme.of(context).textTheme.bodySmall),
-          ),
-          for (final h in vm.hinos) BlocoHino(hino: h),
-        ],
+      body: PincaFonte(
+        child: ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text('$autor · ${vm.hinos.length} hinos',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+            for (final h in vm.hinos) BlocoHino(hino: h),
+          ],
+        ),
       ),
     );
   }
