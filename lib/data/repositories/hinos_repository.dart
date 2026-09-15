@@ -171,6 +171,22 @@ class HinosRepository {
     return resultado;
   }
 
+  /// Todos os grupos (de [agrupar]), em ordem alfabética pelo rótulo
+  /// (normalizado, sem acentos; empate → autor normalizado).
+  List<GrupoHinario> gruposPorNome() {
+    final grupos = agrupar();
+    final lista = <GrupoHinario>[
+      for (final autor in grupos.keys)
+        for (final rotulo in grupos[autor]!.keys)
+          GrupoHinario(autor: autor, rotulo: rotulo, hinos: grupos[autor]![rotulo]!),
+    ];
+    lista.sort((a, b) {
+      final c = _normalizar(a.rotulo).compareTo(_normalizar(b.rotulo));
+      return c != 0 ? c : _normalizar(a.autor).compareTo(_normalizar(b.autor));
+    });
+    return lista;
+  }
+
   /// Chave de agrupamento do hino: urlhinario, ou o nome quando a url é vazia.
   String chaveDe(Hino h) => h.urlhinario.isEmpty ? h.hinario : h.urlhinario;
 

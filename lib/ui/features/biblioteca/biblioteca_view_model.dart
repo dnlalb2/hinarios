@@ -14,12 +14,19 @@ class BibliotecaViewModel extends ChangeNotifier {
 
   String _query = '';
   bool _soFavoritos = false;
+  /// Visão da home: `true` = árvore por autor; `false` = lista plana por nome.
+  /// Só de sessão — não é persistida nas preferências.
+  bool _visaoPorAutor = true;
 
   String get query => _query;
   bool get soFavoritos => _soFavoritos;
   bool get emBusca => _query.trim().isNotEmpty;
+  bool get visaoPorAutor => _visaoPorAutor;
 
   Map<String, Map<String, List<Hino>>> get grupos => _hinos.agrupar();
+
+  /// Grupos achatados e ordenados pelo rótulo (visão "Hinários").
+  List<GrupoHinario> get gruposPorNome => _hinos.gruposPorNome();
 
   /// Hinários (grupos) cujo rótulo ou autor casam com a busca.
   List<GrupoHinario> get hinariosEncontrados => _hinos.buscarGrupos(_query);
@@ -39,6 +46,12 @@ class BibliotecaViewModel extends ChangeNotifier {
 
   void toggleSoFavoritos() {
     _soFavoritos = !_soFavoritos;
+    notifyListeners();
+  }
+
+  /// Alterna a visão da home entre autores (árvore) e hinários (lista plana).
+  void alternarVisao() {
+    _visaoPorAutor = !_visaoPorAutor;
     notifyListeners();
   }
 }

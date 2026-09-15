@@ -71,6 +71,26 @@ class HinosServiceOrdinalFake implements HinosService {
       ]);
 }
 
+/// Fixture LOCAL (não mexe na compartilhada) com rótulos cuja ordem só sai
+/// certa após normalização: por code point 'Índio' ('Í' = U+00CD) viria DEPOIS
+/// de 'Jardim' ('J' = U+004A); normalizado, 'indio' < 'jardim' e 'Índio' vem
+/// primeiro — é isso que prova que o [gruposPorNome] normaliza de verdade.
+class HinosServiceRotulosFake implements HinosService {
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        {
+          'slug': 'i/1/indio', 'num': 1, 'nome': 'Índio', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'Índio', 'urlhinario': 'indio',
+          'ritmo': '', 'letra': 'Letra do Índio',
+        },
+        {
+          'slug': 'j/1/jardim', 'num': 1, 'nome': 'Jardim', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'Jardim', 'urlhinario': 'jardim',
+          'ritmo': '', 'letra': 'Letra do Jardim',
+        },
+      ]);
+}
+
 void main() {
   test('carregar parseia e cacheia (service chamado uma vez)', () async {
     final service = HinosServiceFake();
@@ -163,6 +183,26 @@ void main() {
     expect(repo.buscarGrupos('a'), hasLength(4));
     expect(repo.buscarGrupos('a x').map((g) => '${g.autor}:${g.rotulo}'),
         ['A:Hinário X', 'A:Hinário X (z)', 'B:Hinário X']);
+  });
+
+  test('gruposPorNome: achata o agrupamento e ordena por rótulo normalizado', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final grupos = repo.gruposPorNome();
+    expect(grupos, hasLength(4));
+    // Rótulo normalizado asc; empate ('Hinário X') → autor normalizado (A < B).
+    expect(grupos.map((g) => '${g.autor}:${g.rotulo}'),
+        ['A:Hinário X', 'B:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
+    // Os hinos de cada grupo vêm na ordem do agrupamento (por num).
+    expect(grupos.first.hinos.map((h) => h.nome), ['Três', 'Um']);
+  });
+
+  test('gruposPorNome: acento não muda o lugar (normaliza, não code point)', () async {
+    final repo = HinosRepository(service: HinosServiceRotulosFake());
+    await repo.carregar();
+    // 'Í' (U+00CD) > 'J' (U+004A) no code point cru: sem normalizar, 'Jardim'
+    // viria primeiro. Como o sort usa _normalizar, 'indio' < 'jardim'.
+    expect(repo.gruposPorNome().map((g) => g.rotulo), ['Índio', 'Jardim']);
   });
 
   test('hinosDoHinario: filtra e ordena por num', () async {

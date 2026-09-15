@@ -52,6 +52,24 @@ class BibliotecaView extends StatelessWidget {
               onChanged: vm.setQuery,
             ),
           ),
+          // Seletor de visão: só quando a lista de navegação está visível.
+          if (!(vm.emBusca || vm.soFavoritos))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                  segments: const [
+                    ButtonSegment(value: true, label: Text('Autores')),
+                    ButtonSegment(value: false, label: Text('Hinários')),
+                  ],
+                  selected: {vm.visaoPorAutor},
+                  onSelectionChanged: (_) => vm.alternarVisao(),
+                ),
+              ),
+            ),
           Expanded(
             child: vm.emBusca || vm.soFavoritos
                 ? ListView(
@@ -75,7 +93,9 @@ class BibliotecaView extends StatelessWidget {
                         ),
                     ],
                   )
-                : _arvore(context, vm.grupos),
+                : vm.visaoPorAutor
+                    ? _arvore(context, vm.grupos)
+                    : _listaDeHinarios(context, vm.gruposPorNome),
           ),
         ],
       ),
@@ -145,6 +165,34 @@ class BibliotecaView extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+      ],
+    );
+  }
+
+  /// Visão "Hinários": todos os grupos achatados numa lista alfabética pelo
+  /// rótulo (o autor vira subtítulo). Navega para o mesmo [HinarioView] da árvore.
+  Widget _listaDeHinarios(BuildContext context, List<GrupoHinario> grupos) {
+    return ListView(
+      children: [
+        for (final g in grupos)
+          ListTile(
+            leading: const Icon(Icons.menu_book),
+            title: Text(g.rotulo),
+            subtitle: Text('${g.autor} · ${g.hinos.length} hinos'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => HinarioViewModel(
+                    hinos: g.hinos,
+                    autor: g.autor,
+                    hinario: g.rotulo,
+                  ),
+                  child: HinarioView(autor: g.autor, hinario: g.rotulo),
+                ),
+              ),
+            ),
           ),
       ],
     );

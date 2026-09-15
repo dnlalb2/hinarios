@@ -88,4 +88,57 @@ void main() {
     expect(find.text('1. Três'), findsOneWidget); // hinos em sequência
     expect(find.text('2. Um'), findsOneWidget);
   });
+
+  // Rótulo dentro do seletor de visão (a AppBar também tem um 'Hinários').
+  Finder segmento(String rotulo) => find.descendant(
+      of: find.byType(SegmentedButton<bool>), matching: find.text(rotulo));
+
+  testWidgets('visão Hinários: lista plana por nome e navega', (tester) async {
+    await tester.pumpWidget(await montar());
+    expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+    expect(find.byType(ExpansionTile), findsWidgets); // padrão: árvore
+
+    await tester.tap(segmento('Hinários'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ExpansionTile), findsNothing); // árvore deu lugar à lista
+    // Dois grupos com rótulo 'Hinário X' (autores A e B), um por linha.
+    expect(find.widgetWithText(ListTile, 'Hinário X'), findsNWidgets(2));
+    expect(find.text('A · 2 hinos'), findsOneWidget); // subtítulo do 1º (autor A)
+    expect(find.text('Hinário Y'), findsOneWidget);
+
+    // Primeiro 'Hinário X' é o do autor A (empate de rótulo → A antes de B).
+    await tester.tap(find.widgetWithText(ListTile, 'Hinário X').first);
+    await tester.pumpAndSettle();
+    expect(find.text('1. Três'), findsOneWidget); // hinos do grupo escolhido
+    expect(find.text('2. Um'), findsOneWidget);
+  });
+
+  testWidgets('voltar para Autores restaura a árvore', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.tap(segmento('Hinários'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ExpansionTile), findsNothing);
+
+    await tester.tap(segmento('Autores'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ExpansionTile), findsWidgets);
+    expect(find.text('Hinário X'), findsNothing); // árvore colapsada de novo
+  });
+
+  testWidgets('em busca (ou só favoritos) o seletor de visão não aparece', (tester) async {
+    await tester.pumpWidget(await montar());
+    expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    expect(find.byType(SegmentedButton<bool>), findsNothing);
+    expect(find.text('1. Três'), findsOneWidget); // resultados seguem iguais
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SegmentedButton<bool>), findsNothing);
+  });
 }
