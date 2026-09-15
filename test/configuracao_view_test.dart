@@ -72,7 +72,7 @@ void main() {
   testWidgets('com 1 cifra o exportar habilita e mostra o SnackBar', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final cifras = await cifrasVm();
-    cifras.salvar('a/1/um', const CifraLocal(tom: 'D', acordesPorLinha: ['D']));
+    cifras.salvar('a/1/um', const CifraLocal(tom: 'D', texto: '[D]Um'));
     await tester.pumpWidget(montar(await preferenciasVm(), cifras));
 
     expect(find.text('1 cifra(s) criada(s) neste aparelho'), findsOneWidget);

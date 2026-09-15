@@ -1,6 +1,4 @@
-// test/editor_cifra_test.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,7 +16,8 @@ void main() {
   final hino = Hino(
     slug: 'a/1/sem-cifra', num: 1, nome: 'Sem Cifra', autor: 'A',
     autorFull: 'A', hinario: 'H', urlhinario: 'h', ritmo: '',
-    letra: 'Primeira linha\n\nSegunda linha\nTerceira linha',
+    // CRLF, como vem do acervo.
+    letra: 'Primeira linha\r\n\r\nSegunda linha\r\nTerceira linha',
   );
 
   /// Abre o editor como na vida real: empurrado sobre uma tela qualquer (o
@@ -30,7 +29,7 @@ void main() {
     if (inicial != null) vm.salvar(hino.slug, inicial);
     final prefs = PreferenciasViewModel(service: PreferenciasService());
     await prefs.restaurar();
-    prefs.setTamanhoFonte(tamanhoFonte); // o editor lê como 1:1 da exibição
+    prefs.setTamanhoFonte(tamanhoFonte);
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -61,127 +60,99 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('um campo por linha NÃO-VAZIA da letra', (tester) async {
+  /// O texto do campo único — o que o usuário vê e o que o salvar grava.
+  String textoDoCampo(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField)).controller!.text;
+
+  testWidgets('campo único, monoespaçado, com a instrução do formato', (tester) async {
     await montar(tester);
     expect(find.text('Cifra — Sem Cifra'), findsOneWidget);
-    expect(find.byType(TextField), findsNWidgets(3)); // a linha vazia não conta
-    expect(find.text('Primeira linha'), findsOneWidget);
-    expect(find.text('Segunda linha'), findsOneWidget);
-    expect(find.text('Terceira linha'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget); // acabou o campo por linha
+    expect(find.textContaining('entre colchetes antes da palavra'), findsOneWidget);
+
+    final campo = tester.widget<TextField>(find.byType(TextField));
+    expect(campo.style!.fontFamily, 'monospace'); // 1:1 com a exibição
+    expect(campo.style!.fontSize, 20);
+    expect(campo.maxLines, isNull); // cresce com o texto
+    expect(campo.expands, isTrue);
   });
 
-  // Regressão UX: o formulário é um preview 1:1 da exibição. O campo de
-  // acordes e a régua de letra logo acima dele têm que usar a MESMA métrica
-  // monoespaçada (e o mesmo tamanho do display): em fonte proporcional o
-  // usuário posiciona o acorde por espaços contando colunas que não existem,
-  // e a cifra sai desalinhada na exibição.
-  testWidgets('campo de acordes e régua de letra: mesma métrica monoespaçada', (tester) async {
-    await montar(tester, tamanhoFonte: 22);
-    final campo = tester.widget<TextField>(find.byType(TextField).first);
-    final regua = tester.widget<Text>(find.text('Primeira linha'));
-    expect(campo.style!.fontFamily, 'monospace');
-    expect(regua.style!.fontFamily, 'monospace');
-    expect(campo.style!.fontSize, 22); // = vm.tamanhoFonte (1:1 com o display)
-    expect(regua.style!.fontSize, campo.style!.fontSize);
-  });
-
-  // Regressão de alinhamento: o TextField tem padding INTERNO por padrão
-  // (contentPadding herdado, ~16px à esquerda com a borda de contorno) — a
-  // coluna 0 do texto digitado ficava à direita da régua logo acima. O usuário
-  // posiciona o acorde alinhado à régua e o render (sem padding) joga a cifra
-  // para a ESQUERDA. Coluna 0 = borda esquerda do campo, como na régua.
-  testWidgets('coluna 0 do campo de acordes alinhada à régua (sem padding interno)', (tester) async {
+  testWidgets('hino sem cifra abre com a letra pronta para marcar', (tester) async {
     await montar(tester);
-    final campo = find.byType(TextField).first;
-    final texto = find.descendant(of: campo, matching: find.byType(EditableText));
-    final regua = find.text('Primeira linha');
-    final coluna0 = tester.getTopLeft(regua).dx;
-
-    // Estrutural: sem padding interno e com uma borda que não desloca o texto.
-    final decoracao = tester.widget<TextField>(campo).decoration!;
-    expect(decoracao.contentPadding, EdgeInsets.zero);
-    expect(decoracao.border, isA<UnderlineInputBorder>());
-
-    // Posicional: régua, caixa do campo e TEXTO digitado na mesma coluna 0.
-    expect(tester.getTopLeft(campo).dx, coluna0);
-    expect(tester.getTopLeft(texto).dx, coluna0);
-
-    // Métrica EFETIVA igual: o tema injeta letterSpacing diferente em cada um
-    // (bodyMedium 0.25 na régua, bodyLarge 0.5 no campo) e as colunas do campo
-    // divergiriam da régua linha afora.
-    final estiloRegua = tester.renderObject<RenderParagraph>(regua).text.style!;
-    final estiloCampo = tester.widget<EditableText>(texto).style;
-    expect(estiloCampo.fontFamily, estiloRegua.fontFamily);
-    expect(estiloCampo.fontSize, estiloRegua.fontSize);
-    expect(estiloCampo.letterSpacing, estiloRegua.letterSpacing);
+    expect(textoDoCampo(tester), 'Primeira linha\n\nSegunda linha\nTerceira linha');
   });
 
-  testWidgets('salvar grava tom + acordes por linha no VM e volta', (tester) async {
+  testWidgets('cifra existente abre com o ChordPro dela', (tester) async {
+    const texto = '[G]Primeira linha\n\n[D7]Segunda linha\n[C]Terceira linha';
+    await montar(tester, inicial: const CifraLocal(tom: 'G', texto: texto));
+    expect(textoDoCampo(tester), texto);
+    expect(find.text('G'), findsWidgets); // tom pré-selecionado no dropdown
+  });
+
+  // MIGRAÇÃO: a cifra no formato antigo abre já convertida — o usuário só
+  // confirma e o que é gravado é o ChordPro (o toJson do formato novo não tem
+  // campo legado: ver cifra_local_test).
+  testWidgets('cifra no formato antigo abre convertida para ChordPro', (tester) async {
+    final vm = await montar(
+      tester,
+      inicial: const CifraLocal(tom: 'G', acordesPorLinha: ['  G', 'D7']),
+    );
+    expect(textoDoCampo(tester), 'Pr[G]imeira linha\n\n[D7]Segunda linha\nTerceira linha');
+
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    final salva = vm.cifraDe(hino.slug)!;
+    expect(salva.texto, 'Pr[G]imeira linha\n\n[D7]Segunda linha\nTerceira linha');
+    expect(salva.acordesPorLinha, isEmpty); // o objeto salvo já é o novo
+  });
+
+  testWidgets('salvar grava o ChordPro digitado no VM e volta', (tester) async {
     final vm = await montar(tester);
     await escolherTom(tester, 'D');
-    await tester.enterText(find.byType(TextField).at(0), 'D Bm');
-    await tester.enterText(find.byType(TextField).at(2), 'A');
+    await tester.enterText(
+        find.byType(TextField),
+        '[D]Primeira linha\n\n[D]Segunda linha\n[A]Terceira linha');
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
 
     final salva = vm.cifraDe(hino.slug)!;
     expect(salva.tom, 'D');
-    expect(salva.acordesPorLinha, ['D Bm', '', 'A']);
+    expect(salva.texto, '[D]Primeira linha\n\n[D]Segunda linha\n[A]Terceira linha');
     expect(find.text('Cifra salva'), findsOneWidget); // SnackBar
     expect(find.text('abrir editor'), findsOneWidget); // rota fechada
   });
 
-  // Regressão: os espaços à ESQUERDA posicionam o acorde sobre a sílaba
-  // certa da letra — o trim() do salvar jogava o acorde para a coluna 0.
-  // Só os espaços à direita (sem valor posicional) podem sair.
-  testWidgets('salvar preserva os espaços de posicionamento dos acordes', (tester) async {
+  testWidgets('sem nenhum acorde entre colchetes não salva', (tester) async {
     final vm = await montar(tester);
     await escolherTom(tester, 'D');
-    await tester.enterText(find.byType(TextField).at(0), '   Am   E7');
+    // Só a letra: nada entre colchetes.
+    await tester.enterText(find.byType(TextField), 'Primeira linha');
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
+    expect(vm.cifraDe(hino.slug), isNull);
+    expect(find.text('Escolha o tom e escreva ao menos um acorde entre colchetes'),
+        findsOneWidget);
+    expect(find.text('abrir editor'), findsNothing); // editor segue aberto
 
-    expect(vm.cifraDe(hino.slug)!.acordesPorLinha.first, '   Am   E7');
+    // Colchete que não é acorde: nota fora de A-G e '[' sem ']'.
+    await tester.enterText(find.byType(TextField), '[x]Primeira linha [Am');
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+    expect(vm.cifraDe(hino.slug), isNull);
   });
 
-  testWidgets('salvar corta só os espaços à direita do acorde', (tester) async {
+  testWidgets('sem tom o ChordPro sozinho não salva', (tester) async {
     final vm = await montar(tester);
-    await escolherTom(tester, 'D');
-    await tester.enterText(find.byType(TextField).at(0), '  Am E7   ');
+    await tester.enterText(find.byType(TextField), '[Am]Primeira linha');
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
-
-    expect(vm.cifraDe(hino.slug)!.acordesPorLinha.first, '  Am E7');
-  });
-
-  testWidgets('sem tom ou sem nenhum acorde não salva', (tester) async {
-    final vm = await montar(tester);
-    await tester.enterText(find.byType(TextField).first, 'D Bm');
-    await tester.tap(find.byIcon(Icons.check));
-    await tester.pumpAndSettle();
-    expect(vm.cifraDe(hino.slug), isNull); // faltou o tom
-    expect(find.text('Escolha o tom e preencha ao menos uma linha'), findsOneWidget);
+    expect(vm.cifraDe(hino.slug), isNull);
     expect(find.text('abrir editor'), findsNothing); // editor segue aberto
   });
 
-  testWidgets('abre com a cifra existente preenchida (posicional)', (tester) async {
-    final vm = await montar(
-      tester,
-      inicial: const CifraLocal(tom: 'G', acordesPorLinha: ['G D', '', 'Em']),
-    );
-    expect(find.text('G D'), findsOneWidget);
-    expect(find.text('Em'), findsOneWidget);
-    expect(find.text('G'), findsWidgets); // tom pré-selecionado no dropdown
-
-    // Salvar de novo mantém o que veio (inclusive o tom pré-selecionado).
-    await tester.tap(find.byIcon(Icons.check));
-    await tester.pumpAndSettle();
-    expect(vm.cifraDe(hino.slug)!.tom, 'G');
-    expect(vm.cifraDe(hino.slug)!.acordesPorLinha, ['G D', '', 'Em']);
-  });
-
   testWidgets('remover: cancelar mantém, confirmar apaga e volta', (tester) async {
-    final vm = await montar(tester, inicial: const CifraLocal(tom: 'D', acordesPorLinha: ['D']));
+    final vm = await montar(
+        tester, inicial: const CifraLocal(tom: 'D', texto: '[D]Primeira linha'));
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);

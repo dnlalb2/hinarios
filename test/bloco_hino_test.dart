@@ -136,6 +136,47 @@ void main() {
     expect(find.text('Cifra — Sem Cifra'), findsOneWidget); // editor aberto
   });
 
+  // Formato novo (ChordPro): o acorde sai do colchete e vai para cima da
+  // sílaba que ele precede — e a letra exibida é a do USUÁRIO (a que ele
+  // escreveu no editor), com o mesmo pipeline de render/transposição das
+  // cifras do acervo.
+  testWidgets('cifra local ChordPro põe o acorde sobre a sílaba e usa a letra do usuário', (tester) async {
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug,
+        const CifraLocal(tom: 'D', texto: '[Am]Quem não [E7]anda no caminho'));
+    await tester.pumpWidget(montar(await vmNovo(), semCifra, cifras: cifras));
+
+    // 'Quem não ' tem 9 colunas: o E7 entra na coluna 9.
+    expect(find.text('Am       E7'), findsOneWidget);
+    expect(find.text('Quem não anda no caminho'), findsOneWidget); // letra do usuário
+    expect(find.text('Só a letra'), findsNothing); // a do acervo dá lugar
+    expect(find.text('Adicionar cifra'), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pump();
+    expect(find.text('A#m       F7'), findsOneWidget); // meio tom acima, como nas oficiais
+
+    await tester.tap(find.byIcon(Icons.edit));
+    await tester.pumpAndSettle();
+    expect(find.text('Cifra — Sem Cifra'), findsOneWidget);
+    expect(find.text('[Am]Quem não [E7]anda no caminho'), findsOneWidget); // campo com o ChordPro
+  });
+
+  // Regressão da MIGRAÇÃO: cifra gravada no formato antigo (colunas em
+  // espaços) continua renderizando igual, sem passar pelo editor.
+  testWidgets('cifra local no formato antigo continua renderizando', (tester) async {
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['   Am']));
+    await tester.pumpWidget(montar(await vmNovo(), semCifra, cifras: cifras));
+
+    expect(find.text('   Am'), findsOneWidget); // coluna preservada
+    expect(find.text('Só a letra'), findsOneWidget); // letra do acervo intacta
+
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pump();
+    expect(find.text('   A#m'), findsOneWidget);
+  });
+
   // Cifra própria tem precedência sobre a oficial E entra na mesma
   // transposição (mesmo caminho de renderização das cifras do acervo).
   testWidgets('cifra local renderiza acordes transponíveis e o lápis', (tester) async {
@@ -154,12 +195,14 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit));
     await tester.pumpAndSettle();
     expect(find.text('Cifra — Sem Cifra'), findsOneWidget);
-    expect(find.text('D Bm'), findsOneWidget); // campo preenchido (tom original)
+    // Campo preenchido com a cifra existente, já convertida para ChordPro.
+    expect(find.text('[D]Só[Bm] a letra'), findsOneWidget);
   });
 
-  // Regressão: o espaço inicial do acorde (coluna sobre a sílaba) precisa
-  // sobreviver ao caminho inteiro — cifra local → textoCifra → alinhar →
-  // render. O match exato da string prova que a coluna não se perdeu.
+  // Regressão: o espaço inicial do acorde (coluna sobre a sílaba) de uma cifra
+  // no formato ANTIGO precisa sobreviver ao caminho inteiro — cifra local →
+  // textoChordPro (migração) → parsearChordPro → alinhar → render. O match
+  // exato da string prova que a coluna não se perdeu na conversão.
   testWidgets('cifra local mantém os espaços de posicionamento dos acordes', (tester) async {
     final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
     cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['   Am   E7']));

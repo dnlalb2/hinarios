@@ -1,8 +1,10 @@
 // lib/ui/core/widgets/bloco_hino.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../domain/models/cifra_local.dart';
 import '../../../domain/models/hino.dart';
 import '../../../domain/use_cases/alinhamento.dart';
+import '../../../domain/use_cases/chordpro.dart';
 import '../../../domain/use_cases/transposicao.dart';
 import '../cifras_locais_view_model.dart';
 import '../preferencias_view_model.dart';
@@ -21,9 +23,7 @@ class BlocoHino extends StatelessWidget {
     // Cifra própria do usuário tem precedência sobre a oficial: foi ele quem
     // a escreveu para ESTE hino (removê-la devolve a oficial, quando existe).
     final local = context.watch<CifrasLocaisViewModel>().cifraDe(hino.slug);
-    final cifra = local == null
-        ? hino.cifra
-        : Cifra(tom: local.tom, texto: local.textoCifra(hino.letra));
+    final (cifra, letra) = _efetivas(hino, local);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -90,12 +90,12 @@ class BlocoHino extends StatelessWidget {
                     ),
                 ],
               ),
-            if (cifra != null) ..._linhasCifra(context, cifra, hino.letra, shift, tamanhoFonte),
+            if (cifra != null) ..._linhasCifra(context, cifra, letra, shift, tamanhoFonte),
             const SizedBox(height: 6),
             // Com cifra, a letra já aparece intercalada com os acordes —
             // renderizar de novo duplicaria a música inteira.
             if (cifra == null) ...[
-              Text(hino.letra, style: TextStyle(fontSize: tamanhoFonte, height: 1.5)),
+              Text(letra, style: TextStyle(fontSize: tamanhoFonte, height: 1.5)),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -108,6 +108,23 @@ class BlocoHino extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Cifra a exibir e a letra que ela acompanha. Cifra própria do usuário tem
+  /// precedência sobre a oficial e entra no MESMO pipeline (alinhar → render →
+  /// transpor) das do acervo: o ChordPro vira (letra limpa, linha de acordes
+  /// posicional) aqui, uma vez. Com cifra própria a letra exibida é a do
+  /// usuário — a que ele escreveu no editor —, não a do acervo.
+  static (Cifra?, String) _efetivas(Hino hino, CifraLocal? local) {
+    if (local == null) return (hino.cifra, hino.letra);
+    final linhas = parsearChordPro(local.textoChordPro(hino.letra));
+    return (
+      Cifra(
+        tom: local.tom,
+        texto: [for (final l in linhas) l.acordes].join(';'),
+      ),
+      [for (final l in linhas) l.letra].join('\n'),
     );
   }
 

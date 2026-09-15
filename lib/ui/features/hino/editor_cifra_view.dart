@@ -13,6 +13,14 @@ const List<String> tonsDoEditor = [
   'Am', 'A#m', 'Bm', 'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m',
 ];
 
+/// Instrução do formato, mostrada no topo do editor.
+const String instrucaoChordPro =
+    'Escreva os acordes entre colchetes antes da palavra. '
+    'Ex.: [Am]Quem não [E7]anda no caminho';
+
+/// Acorde no formato ChordPro: '[' + nota (A-G) + o resto + ']'.
+final RegExp acordeChordPro = RegExp(r'\[[A-G][^\]]*\]');
+
 void abrirEditorCifra(BuildContext context, Hino hino) {
   Navigator.push(
     context,
@@ -20,8 +28,9 @@ void abrirEditorCifra(BuildContext context, Hino hino) {
   );
 }
 
-/// Editor da cifra própria do hino: um campo de acordes por linha NÃO-VAZIA
-/// da letra (o pareamento com a letra é posicional — ver CifraLocal).
+/// Editor da cifra própria do hino: um campo único em ChordPro — o acorde vai
+/// entre colchetes, colado na sílaba que ele acompanha. O alinhamento é
+/// estrutural (não há colunas para contar nem espaços a acertar).
 class EditorCifraView extends StatefulWidget {
   final Hino hino;
   const EditorCifraView({super.key, required this.hino});
@@ -31,9 +40,7 @@ class EditorCifraView extends StatefulWidget {
 }
 
 class _EditorCifraViewState extends State<EditorCifraView> {
-  /// Linhas NÃO-VAZIAS da letra, na ordem — as que ganham campo de acordes.
-  late final List<String> _linhas;
-  late final List<TextEditingController> _controllers;
+  late final TextEditingController _texto;
   String? _tom;
   /// Já existe cifra própria deste hino? (habilita o botão de remover)
   late final bool _editando;
@@ -41,48 +48,39 @@ class _EditorCifraViewState extends State<EditorCifraView> {
   @override
   void initState() {
     super.initState();
-    final existente = context.read<CifrasLocaisViewModel>().cifraDe(widget.hino.slug);
+    final existente =
+        context.read<CifrasLocaisViewModel>().cifraDe(widget.hino.slug);
     _editando = existente != null;
-    _linhas = _linhasNaoVazias(widget.hino.letra);
-    _controllers = [
-      for (var i = 0; i < _linhas.length; i++)
-        TextEditingController(
-          text: existente != null && i < existente.acordesPorLinha.length
-              ? existente.acordesPorLinha[i]
-              : '',
-        ),
-    ];
+    // Sem cifra própria o campo abre com a LETRA do acervo, pronta para
+    // receber os colchetes (quebras normalizadas: a do acervo vem com CRLF).
+    // Com cifra, abre com ela — convertendo o formato antigo quando for o caso.
+    _texto = TextEditingController(
+      text: existente == null
+          ? _normalizarQuebras(widget.hino.letra)
+          : existente.textoChordPro(widget.hino.letra),
+    );
     // Tom fora da lista (import de outro dispositivo com 'Bb', p.ex.) não pode
     // derrubar o DropdownButtonFormField, que exige um item com o mesmo valor.
     _tom = tonsDoEditor.contains(existente?.tom) ? existente!.tom : null;
   }
 
-  static List<String> _linhasNaoVazias(String letra) {
-    // Mesma normalização de quebras do alinhar()/textoCifra().
-    if (letra.isEmpty) return const [];
-    return [
-      for (final linha
-          in letra.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n'))
-        if (linha.trim().isNotEmpty) linha.trim(),
-    ];
-  }
+  static String _normalizarQuebras(String texto) =>
+      texto.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    _texto.dispose();
     super.dispose();
   }
 
   void _salvar() {
     final tom = _tom;
-    // Espaços à ESQUERDA posicionam o acorde sobre a sílaba da letra (mesma
-    // convenção do acervo, ver alinhar()) — só os da direita podem sair.
-    final acordes = [for (final c in _controllers) c.text.trimRight()];
-    if (tom == null || acordes.every((a) => a.trim().isEmpty)) {
+    final texto = _texto.text;
+    if (tom == null || !acordeChordPro.hasMatch(texto)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escolha o tom e preencha ao menos uma linha')),
+        const SnackBar(
+          content: Text('Escolha o tom e escreva ao menos um acorde entre colchetes'),
+        ),
       );
       return;
     }
@@ -91,7 +89,7 @@ class _EditorCifraViewState extends State<EditorCifraView> {
     final navigator = Navigator.of(context);
     context.read<CifrasLocaisViewModel>().salvar(
           widget.hino.slug,
-          CifraLocal(tom: tom, acordesPorLinha: acordes),
+          CifraLocal(tom: tom, texto: texto),
         );
     navigator.pop();
     messenger.showSnackBar(const SnackBar(content: Text('Cifra salva')));
@@ -125,16 +123,9 @@ class _EditorCifraViewState extends State<EditorCifraView> {
 
   @override
   Widget build(BuildContext context) {
-    final corDica = Theme.of(context).hintColor;
-    // O formulário é um preview 1:1 da exibição: acordes e a régua de letra
-    // acima de cada campo usam a MESMA métrica monoespaçada e o MESMO tamanho
-    // do bloco do hino. Em fonte proporcional (default do TextField) o usuário
-    // posiciona o acorde contando colunas que não existem e a cifra sai
-    // desalinhada na exibição.
+    // Mesma métrica monoespaçada e mesmo tamanho do bloco do hino: o campo é
+    // um preview fiel do que a música vai mostrar.
     final tamanhoFonte = context.read<PreferenciasViewModel>().tamanhoFonte;
-    // letterSpacing 0 explícito: sem ele o tema injeta espaçamentos DIFERENTES
-    // em cada widget (bodyMedium 0.25 na régua, bodyLarge 0.5 no TextField) e a
-    // coluna N do campo deixa de cair sob a coluna N da régua.
     final estiloMono = TextStyle(
       fontFamily: 'monospace',
       fontSize: tamanhoFonte,
@@ -157,42 +148,46 @@ class _EditorCifraViewState extends State<EditorCifraView> {
           ),
         ],
       ),
-      body: ListView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          DropdownButtonFormField<String>(
-            initialValue: _tom,
-            decoration: const InputDecoration(
-              labelText: 'Tom',
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              for (final t in tonsDoEditor) DropdownMenuItem(value: t, child: Text(t)),
-            ],
-            onChanged: (v) => _tom = v,
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < _linhas.length; i++) ...[
-            Text(_linhas[i], style: estiloMono.copyWith(color: corDica)),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _controllers[i],
-              style: estiloMono,
-              // contentPadding zero: o padding interno do campo (herdado,
-              // ~16px à esquerda) empurrava a coluna 0 do texto digitado para
-              // a direita da régua logo acima — o usuário alinhava o acorde na
-              // régua e o render, sem padding, saía deslocado para a ESQUERDA.
-              // A borda inferior mantém a pista visual sem deslocar o texto.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: _tom,
               decoration: const InputDecoration(
-                hintText: 'acordes desta linha',
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                border: UnderlineInputBorder(),
+                labelText: 'Tom',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                for (final t in tonsDoEditor) DropdownMenuItem(value: t, child: Text(t)),
+              ],
+              onChanged: (v) => _tom = v,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              instrucaoChordPro,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).hintColor,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Expanded(
+              child: TextField(
+                controller: _texto,
+                style: estiloMono,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                keyboardType: TextInputType.multiline,
+                // Sem hintText: a instrução acima já traz o exemplo, e o campo
+                // ou vem preenchido (letra/cifra) ou o usuário sabe o formato.
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+            ),
           ],
-        ],
+        ),
       ),
     );
   }

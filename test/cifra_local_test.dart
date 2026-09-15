@@ -1,63 +1,108 @@
-// test/cifra_local_test.dart
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hinarios_app/domain/models/cifra_local.dart';
 import 'package:hinarios_app/domain/use_cases/alinhamento.dart';
+import 'package:hinarios_app/domain/use_cases/chordpro.dart';
 
 void main() {
-  test('toJson/fromJson faz round-trip (tom + acordes por linha)', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D Bm', '', 'A D']);
+  test('toJson/fromJson do formato novo (tom + texto) faz round-trip', () {
+    const cifra = CifraLocal(tom: 'D', texto: '[D]Quem não [A]anda');
     final volta = CifraLocal.fromJson(
         jsonDecode(jsonEncode(cifra.toJson())) as Map<String, dynamic>);
     expect(volta.tom, 'D');
-    expect(volta.acordesPorLinha, ['D Bm', '', 'A D']);
+    expect(volta.texto, '[D]Quem não [A]anda');
+    expect(volta.acordesPorLinha, isEmpty);
+  });
+
+  test('toJson nunca escreve o campo legado', () {
+    const cifra = CifraLocal(tom: 'D', texto: '[D]Um');
+    expect(cifra.toJson(), {'tom': 'D', 'texto': '[D]Um'});
+    expect(cifra.toJson().containsKey('acordes'), isFalse);
   });
 
   test('fromJson tolera campos ausentes/estranhos', () {
     final vazia = CifraLocal.fromJson(const {});
     expect(vazia.tom, '');
+    expect(vazia.texto, '');
     expect(vazia.acordesPorLinha, isEmpty);
 
     final mista = CifraLocal.fromJson(const {
       'tom': 'G',
+      'texto': 42,
       'acordes': ['G', 42, 'D'],
     });
+    expect(mista.texto, ''); // não-String é descartado
     expect(mista.acordesPorLinha, ['G', 'D']); // não-String é descartado
   });
 
-  // O par letra/cifra do alinhar() é POSICIONAL quando as contagens batem:
-  // textoCifra devolve UM compasso por linha da letra (linha vazia → compasso
-  // vazio), então a linha vazia no meio NÃO desloca os acordes seguintes.
-  test('textoCifra: um compasso por linha, linha vazia vira compasso vazio', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D Bm', 'A']);
-    expect(cifra.textoCifra('Linha um\n\nLinha dois'), 'D Bm;;A');
+  test('textoChordPro: formato novo devolve o próprio texto', () {
+    const cifra = CifraLocal(tom: 'D', texto: '[D]Um [A]dois');
+    expect(cifra.textoChordPro('letra do acervo'), '[D]Um [A]dois');
   });
 
-  test('textoCifra casa 1:1 com as linhas da letra no alinhar()', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'G']);
-    const letra = 'Primeira\n\nSegunda';
-    final pares = alinhar(letra, cifra.textoCifra(letra));
+  // MIGRAÇÃO: o formato antigo guardava a coluna do acorde em espaços. A
+  // conversão insere o colchete ANTES do caractere daquela coluna — a coluna
+  // sobrevive, e o parsearChordPro devolve a string original.
+  test('textoChordPro converte o legado preservando as colunas', () {
+    const legado = CifraLocal(tom: 'D', acordesPorLinha: ['   Am   E7']);
+    final texto = legado.textoChordPro('Só a letra');
+    expect(texto, 'Só [Am]a let[E7]ra');
+
+    final linha = parsearChordPro(texto).single;
+    expect(linha.letra, 'Só a letra');
+    expect(linha.acordes, '   Am   E7'); // colunas idênticas às do legado
+  });
+
+  test('textoChordPro: acorde além do fim da letra vira acorde no fim', () {
+    const legado = CifraLocal(tom: 'D', acordesPorLinha: ['     D']);
+    expect(legado.textoChordPro('Um'), 'Um   [D]');
+  });
+
+  test('textoChordPro: linha vazia não consome acorde (pareamento posicional)', () {
+    const legado = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'A']);
+    expect(legado.textoChordPro('Um\n\nDois'), '[D]Um\n\n[A]Dois');
+  });
+
+  test('textoChordPro: acordes sobrando são ignorados, faltando vira nada', () {
+    const sobrando = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'G']);
+    expect(sobrando.textoChordPro('Um'), '[D]Um');
+
+    const faltando = CifraLocal(tom: 'D', acordesPorLinha: ['D']);
+    expect(faltando.textoChordPro('Um\nDois'), '[D]Um\nDois');
+  });
+
+  test('textoChordPro normaliza CRLF como o alinhar()', () {
+    const legado = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'A']);
+    expect(legado.textoChordPro('Um\r\nDois'), '[D]Um\n[A]Dois');
+  });
+
+  test('textoChordPro: cifra sem texto nem acordes devolve vazio', () {
+    const vazia = CifraLocal(tom: 'D');
+    expect(vazia.textoChordPro('Um'), '');
+    expect(vazia.textoChordPro(''), '');
+  });
+
+  test('json legado (acordes por linha) é lido e vira ChordPro', () {
+    final antiga = CifraLocal.fromJson(const {
+      'tom': 'D',
+      'acordes': ['   Am   E7'],
+    });
+    expect(antiga.texto, '');
+    expect(antiga.textoChordPro('Só a letra'), 'Só [Am]a let[E7]ra');
+  });
+
+  // O par letra/cifra do alinhar() é POSICIONAL: textoChordPro +
+  // parsearChordPro devolvem uma entrada por linha da letra (linha vazia
+  // inclusive), então a linha vazia no meio não desloca os acordes seguintes.
+  test('ChordPro alimenta o alinhar() 1:1 com as linhas', () {
+    const cifra = CifraLocal(tom: 'D', texto: '[D]Primeira\n\n[G]Segunda');
+    final linhas = parsearChordPro(cifra.textoChordPro('letra do acervo'));
+    final letra = linhas.map((l) => l.letra).join('\n');
+    final acordes = linhas.map((l) => l.acordes).join(';');
+    expect(letra, 'Primeira\n\nSegunda');
+
+    final pares = alinhar(letra, acordes);
     expect(pares.map((p) => p.acordes).toList(), ['D', null, 'G']);
     expect(pares.map((p) => p.texto).toList(), ['Primeira', '', 'Segunda']);
-  });
-
-  test('textoCifra: faltando acordes, as linhas restantes viram vazias', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D']);
-    expect(cifra.textoCifra('Um\nDois\nTrês'), 'D;;');
-    expect(cifra.textoCifra('Um'), 'D');
-    // Sobrando acordes, os extras são ignorados (não há linha para consumir).
-    const sobrando = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'G']);
-    expect(sobrando.textoCifra('Um'), 'D');
-  });
-
-  test('textoCifra: letra vazia não gera compasso', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D']);
-    expect(cifra.textoCifra(''), '');
-    expect(alinhar('', cifra.textoCifra('')), isEmpty);
-  });
-
-  test('textoCifra normaliza CRLF como o alinhar()', () {
-    const cifra = CifraLocal(tom: 'D', acordesPorLinha: ['D', 'A']);
-    expect(cifra.textoCifra('Um\r\nDois'), 'D;A');
   });
 }
