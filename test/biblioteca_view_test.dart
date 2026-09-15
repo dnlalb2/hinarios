@@ -169,6 +169,24 @@ void main() {
     expect(find.byType(SegmentedButton<bool>), findsNothing);
   });
 
+  testWidgets('cabeçalho do autor conta só os hinos dele no coletivo', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceColetivoFake()));
+
+    await tester.tap(find.text('X1'));
+    await tester.pumpAndSettle();
+
+    // O cabeçalho do autor conta só os hinos DELE ('X1' tem 1 dos 2 do 'col').
+    final cabecalho = find.widgetWithText(ExpansionTile, 'X1');
+    expect(find.descendant(of: cabecalho, matching: find.text('1 hinos')),
+        findsOneWidget);
+    // O tile do grupo segue com a contagem GLOBAL (o hinário completo).
+    expect(
+        find.descendant(
+            of: find.widgetWithText(ListTile, 'Caboclo'),
+            matching: find.text('2 hinos')),
+        findsOneWidget);
+  });
+
   testWidgets('hinário coletivo: aparece sob cada autor e mostra Diversos', (tester) async {
     await tester.pumpWidget(await montar(service: HinosServiceColetivoFake()));
 

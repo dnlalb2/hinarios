@@ -144,8 +144,11 @@ class BibliotecaView extends StatelessWidget {
         for (final autor in grupos.keys)
           ExpansionTile(
             title: Text(autor),
+            // Contagem do AUTOR: os hinos dele, não o total global dos grupos
+            // (num coletivo ele pode ter 1 de 43). Mesma normalização da
+            // chave de [agrupar]: autor vazio vira 'Sem autor'.
             subtitle: Text(
-                '${grupos[autor]!.fold<int>(0, (a, g) => a + g.hinos.length)} hinos'),
+                '${grupos[autor]!.expand((g) => g.hinos).where((h) => (h.autor.isEmpty ? 'Sem autor' : h.autor) == autor).length} hinos'),
             children: [
               for (final g in grupos[autor]!)
                 ListTile(
