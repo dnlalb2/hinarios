@@ -41,4 +41,30 @@ void main() {
     expect(find.text('1. Quatro'), findsOneWidget);
     expect(find.text('1. Três'), findsOneWidget);
   });
+
+  testWidgets('atalho de Configurações abre a tela de configurações',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final pref = PreferenciasViewModel(service: PreferenciasService());
+    await pref.restaurar();
+    final hino = repo.hinosDoHinario('x').first; // '1. Três'
+    final vm = HinoViewModel(hinos: repo, hino: hino);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: pref),
+          ChangeNotifierProvider.value(value: vm),
+          Provider<HinosRepository>.value(value: repo),
+        ],
+        child: const MaterialApp(home: HinoView()),
+      ),
+    );
+    expect(find.byTooltip('Configurações'), findsOneWidget);
+    await tester.tap(find.byTooltip('Configurações'));
+    await tester.pumpAndSettle();
+    expect(find.text('Configurações'), findsOneWidget);
+    expect(find.text('Tema escuro'), findsOneWidget);
+  });
 }

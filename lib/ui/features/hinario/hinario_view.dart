@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
+import '../configuracao/configuracao_view.dart';
 import 'hinario_view_model.dart';
 
 class HinarioView extends StatelessWidget {
@@ -13,7 +14,19 @@ class HinarioView extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<HinarioViewModel>();
     return Scaffold(
-      appBar: AppBar(title: Text(hinario)),
+      appBar: AppBar(
+        title: Text(hinario),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Configurações',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ConfiguracaoView()),
+            ),
+          ),
+        ],
+      ),
       body: ListView(
         children: [
           Padding(
