@@ -11,9 +11,10 @@ class GrupoHinario {
   const GrupoHinario({required this.autor, required this.rotulo, required this.hinos});
 }
 
-// Normalização pt-BR sem NFD (não há API nativa): 26 substituições 1:1.
-const _acentos = 'áàâãäéèêëíìîïóòôõöúùûüçñýÿ';
-const _semAcento = 'aaaaaeeeeiiiiooooouuuucnyy';
+// Normalização pt-BR sem NFD (não há API nativa): 28 substituições 1:1.
+// Inclui os indicadores ordinais ª/º ('1ª VEZ' na letra casa com '1a vez').
+const _acentos = 'áàâãäéèêëíìîïóòôõöúùûüçñýÿªº';
+const _semAcento = 'aaaaaeeeeiiiiooooouuuucnyyao';
 
 /// Minúsculas e sem acentos — o índice e a consulta passam por aqui, então
 /// 'chaveirao' acha 'Chaveirão'.
@@ -38,6 +39,9 @@ class HinosRepository {
   /// construído uma única vez em [carregar]. Sem ele, cada tecla digitada
   /// reconstruía ~3,4 MB de strings para os 3087 hinos.
   List<String>? _indice;
+  /// Cache do [agrupar] (reagrupar 3087 hinos custa O(n log n) por build, não
+  /// por tecla). Invalidado em [carregar], quando `_hinos` é trocado.
+  Map<String, Map<String, List<Hino>>>? _gruposCache;
 
   static final _espacos = RegExp(r'\s+');
 
@@ -46,6 +50,7 @@ class HinosRepository {
 
   Future<List<Hino>> carregar() async {
     if (_hinos != null) return _hinos!;
+    _gruposCache = null; // invalida antes de trocar _hinos
     final texto = await _service.carregarJson();
     final lista = jsonDecode(texto) as List<dynamic>;
     _hinos = [for (final item in lista) Hino.fromJson(item as Map<String, dynamic>)];
@@ -62,6 +67,8 @@ class HinosRepository {
       ].join(' '));
 
   Map<String, Map<String, List<Hino>>> agrupar() {
+    final cache = _gruposCache;
+    if (cache != null) return cache;
     // 1. Identidade do hinário = urlhinario (hinos sem url: o nome).
     final porAutor = <String, Map<String, List<Hino>>>{};
     for (final h in _hinos!) {
@@ -108,7 +115,7 @@ class HinosRepository {
       resultado[autor] = ordenado;
     }
     final autores = resultado.keys.toList()..sort();
-    return <String, Map<String, List<Hino>>>{
+    return _gruposCache = <String, Map<String, List<Hino>>>{
       for (final autor in autores) autor: resultado[autor]!,
     };
   }
@@ -141,7 +148,9 @@ class HinosRepository {
 
   /// Grupos (do agrupamento por urlhinario) cujo rótulo OU autor casam todos
   /// os tokens da consulta (normalizada). Query vazia → lista vazia.
-  /// Sem índice pré-computado: são ~81 grupos.
+  /// Os grupos vêm do [agrupar] memoizado: o acervo real tem 265 grupos em 181
+  /// autores, e o que pesava era o reagrupamento dos 3087 hinos — agora pago
+  /// uma única vez por carga, então nenhum índice por grupo é necessário.
   List<GrupoHinario> buscarGrupos(String query) {
     final tokens = _tokens(query);
     if (tokens.isEmpty) return const [];

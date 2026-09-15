@@ -59,6 +59,18 @@ class HinosServiceSemUrlFake implements HinosService {
       ]);
 }
 
+/// Fixture mínima com indicadores ordinais na letra (caso real: '1ª VEZ').
+class HinosServiceOrdinalFake implements HinosService {
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        {
+          'slug': 'a/1/ordinal', 'num': 1, 'nome': 'Ordinal', 'autor': 'A',
+          'autor_full': 'A', 'hinario': 'Hinário X', 'urlhinario': 'x',
+          'ritmo': '', 'letra': 'Entra 1ª VEZ, repete 2º refrão',
+        },
+      ]);
+}
+
 void main() {
   test('carregar parseia e cacheia (service chamado uma vez)', () async {
     final service = HinosServiceFake();
@@ -117,6 +129,15 @@ void main() {
     expect(repo.buscar('TRÊS').map((h) => h.nome), ['Três']);
     // 'hinario x' sem acento acha os hinos dos dois grupos de rótulo 'Hinário X'
     expect(repo.buscar('hinario x').map((h) => h.nome), ['Um', 'Três', 'Quatro', 'Cinco']);
+  });
+
+  test('buscar: ª e º também são normalizados', () async {
+    final repo = HinosRepository(service: HinosServiceOrdinalFake());
+    await repo.carregar();
+    // '1ª VEZ' na letra casa com a consulta acentuada e com '1a vez'.
+    expect(repo.buscar('1ª VEZ').map((h) => h.nome), ['Ordinal']);
+    expect(repo.buscar('1a vez').map((h) => h.nome), ['Ordinal']);
+    expect(repo.buscar('2o refrao').map((h) => h.nome), ['Ordinal']); // º → o
   });
 
   test('buscarGrupos: casa rótulo e autor, na ordem do agrupamento', () async {

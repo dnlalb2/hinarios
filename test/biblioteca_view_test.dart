@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hinarios_app/data/repositories/hinos_repository.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
+import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 import 'package:hinarios_app/ui/features/biblioteca/biblioteca_view.dart';
 import 'package:hinarios_app/ui/features/biblioteca/biblioteca_view_model.dart';
 import 'hinos_repository_test.dart' show HinosServiceFake;
@@ -57,6 +58,10 @@ void main() {
     // Tiles dos grupos (A: X, X (z), Y; B: X) — só ListTile, não os chips do BlocoHino.
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsNWidgets(2));
     expect(find.text('A · 2 hinos'), findsOneWidget); // subtítulo do 1º grupo
+    // Os hinos que casam continuam logo abaixo da seção de grupos.
+    expect(find.text('2. Um'), findsOneWidget);
+    expect(tester.getTopLeft(find.byType(BlocoHino).first).dy,
+        greaterThan(tester.getTopLeft(find.byType(Divider)).dy));
     await tester.tap(find.widgetWithText(ListTile, 'Hinário X').first);
     await tester.pumpAndSettle();
     expect(find.text('1. Três'), findsOneWidget); // hinos do grupo escolhido
