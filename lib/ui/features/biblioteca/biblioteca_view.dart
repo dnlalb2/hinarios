@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../../data/repositories/hinos_repository.dart';
-import '../../../domain/models/hino.dart';
 import '../../core/preferencias_view_model.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
@@ -95,7 +94,7 @@ class BibliotecaView extends StatelessWidget {
                   )
                 : vm.visaoPorAutor
                     ? _arvore(context, vm.grupos)
-                    : _listaDeHinarios(context, vm.gruposPorNome),
+                    : _listaDeHinarios(context, vm.gruposHinarios),
           ),
         ],
       ),
@@ -136,30 +135,35 @@ class BibliotecaView extends StatelessWidget {
     ];
   }
 
-  Widget _arvore(BuildContext context, Map<String, Map<String, List<Hino>>> grupos) {
+  /// Árvore por autor: cada ExpansionTile lista os hinários GLOBAIS em que o
+  /// autor tem ao menos um hino. Os grupos são os mesmos da lista plana — um
+  /// coletivo aparece sob cada autor envolvido e abre o hinário completo.
+  Widget _arvore(BuildContext context, Map<String, List<GrupoHinario>> grupos) {
     return ListView(
       children: [
         for (final autor in grupos.keys)
           ExpansionTile(
             title: Text(autor),
-            subtitle: Text('${grupos[autor]!.values.fold<int>(0, (a, l) => a + l.length)} hinos'),
+            subtitle: Text(
+                '${grupos[autor]!.fold<int>(0, (a, g) => a + g.hinos.length)} hinos'),
             children: [
-              for (final hinario in grupos[autor]!.keys)
+              for (final g in grupos[autor]!)
                 ListTile(
                   dense: true,
                   leading: const Icon(Icons.menu_book),
-                  title: Text(hinario),
-                  subtitle: Text('${grupos[autor]![hinario]!.length} hinos'),
+                  title: Text(g.rotulo),
+                  // O autor já é o cabeçalho do ExpansionTile — não se repete.
+                  subtitle: Text('${g.hinos.length} hinos'),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChangeNotifierProvider(
                         create: (_) => HinarioViewModel(
-                          hinos: grupos[autor]![hinario]!,
-                          autor: autor,
-                          hinario: hinario,
+                          hinos: g.hinos,
+                          autor: g.autor,
+                          hinario: g.rotulo,
                         ),
-                        child: HinarioView(autor: autor, hinario: hinario),
+                        child: HinarioView(autor: g.autor, hinario: g.rotulo),
                       ),
                     ),
                   ),

@@ -39,9 +39,11 @@ class HinosRepository {
   /// construído uma única vez em [carregar]. Sem ele, cada tecla digitada
   /// reconstruía ~3,4 MB de strings para os 3087 hinos.
   List<String>? _indice;
-  /// Cache do [agrupar] (reagrupar 3087 hinos custa O(n log n) por build, não
-  /// por tecla). Invalidado em [carregar], quando `_hinos` é trocado.
-  Map<String, Map<String, List<Hino>>>? _gruposCache;
+  /// Cache do [gruposGlobais] (reagrupar 3087 hinos custa O(n log n) por
+  /// build, não por tecla). Invalidado em [carregar], quando `_hinos` troca.
+  List<GrupoHinario>? _gruposGlobaisCache;
+  /// Cache do [agrupar] (autor → grupos globais): mesma razão.
+  Map<String, List<GrupoHinario>>? _gruposCache;
 
   static final _espacos = RegExp(r'\s+');
 
@@ -50,7 +52,8 @@ class HinosRepository {
 
   Future<List<Hino>> carregar() async {
     if (_hinos != null) return _hinos!;
-    _gruposCache = null; // invalida antes de trocar _hinos
+    _gruposGlobaisCache = null; // invalida antes de trocar _hinos
+    _gruposCache = null;
     final texto = await _service.carregarJson();
     final lista = jsonDecode(texto) as List<dynamic>;
     _hinos = [for (final item in lista) Hino.fromJson(item as Map<String, dynamic>)];
@@ -66,68 +69,104 @@ class HinosRepository {
         if (h.cifra != null) h.cifra!.tom,
       ].join(' '));
 
-  Map<String, Map<String, List<Hino>>> agrupar() {
-    final cache = _gruposCache;
+  /// Todos os hinários como grupos GLOBAIS por urlhinario (hinos sem url: o
+  /// nome), independentemente de quem recebeu cada hino. Memoizado.
+  ///
+  /// É a unidade real do site: 35 dos 84 hinários são coletivos (hinos
+  /// recebidos por canais/autores diferentes) — o grupo 'caboclo-guerreiro',
+  /// por exemplo, tem 43 hinos de 41 autores. O campo [GrupoHinario.autor] é o
+  /// autor único quando todos os hinos o compartilham, senão 'Diversos'.
+  List<GrupoHinario> gruposGlobais() {
+    final cache = _gruposGlobaisCache;
     if (cache != null) return cache;
     // 1. Identidade do hinário = urlhinario (hinos sem url: o nome).
-    final porAutor = <String, Map<String, List<Hino>>>{};
+    final porChave = <String, List<Hino>>{};
     for (final h in _hinos!) {
-      final autor = h.autor.isEmpty ? 'Sem autor' : h.autor;
-      final chave = h.urlhinario.isEmpty ? h.hinario : h.urlhinario;
-      porAutor.putIfAbsent(autor, () => {}).putIfAbsent(chave, () => []).add(h);
+      porChave.putIfAbsent(chaveDe(h), () => []).add(h);
     }
-    final resultado = <String, Map<String, List<Hino>>>{};
-    for (final autor in porAutor.keys) {
-      final grupos = porAutor[autor]!;
-      // 2. Rótulo = nome de hinário mais comum no grupo (tie-break alfabético).
-      final rotuloPorChave = <String, String>{
-        for (final chave in grupos.keys) chave: _rotuloMaisComum(grupos[chave]!),
-      };
-      // 3. Colisão de rótulo (duas chaves, mesmo rótulo): o grupo de menor
-      //    contagem recebe o sufixo ' (chave)'; o maior fica com o rótulo puro.
-      final porRotulo = <String, List<String>>{};
-      for (final chave in grupos.keys) {
-        porRotulo.putIfAbsent(rotuloPorChave[chave]!, () => []).add(chave);
-      }
-      final comRotulo = <String, List<Hino>>{};
-      for (final rotulo in porRotulo.keys) {
-        final chaves = porRotulo[rotulo]!;
-        if (chaves.length == 1) {
-          comRotulo[rotulo] = grupos[chaves.first]!;
-        } else {
-          chaves.sort((a, b) {
-            final c = grupos[a]!.length.compareTo(grupos[b]!.length);
-            return c != 0 ? c : a.compareTo(b);
-          });
-          for (final chave in chaves) {
-            final rotuloFinal = chave == chaves.last ? rotulo : '$rotulo ($chave)';
-            comRotulo[rotuloFinal] = grupos[chave]!;
-          }
+    // 2. Rótulo = nome de hinário mais comum no grupo (tie-break alfabético).
+    final rotuloPorChave = <String, String>{
+      for (final chave in porChave.keys) chave: _rotuloMaisComum(porChave[chave]!),
+    };
+    // 3. Colisão de rótulo (duas chaves, mesmo rótulo): o grupo de menor
+    //    contagem GLOBAL recebe o sufixo ' (chave)'; o maior fica com o puro.
+    final porRotulo = <String, List<String>>{};
+    for (final chave in porChave.keys) {
+      porRotulo.putIfAbsent(rotuloPorChave[chave]!, () => []).add(chave);
+    }
+    final comRotulo = <String, List<Hino>>{};
+    for (final rotulo in porRotulo.keys) {
+      final chaves = porRotulo[rotulo]!;
+      if (chaves.length == 1) {
+        comRotulo[rotulo] = porChave[chaves.first]!;
+      } else {
+        chaves.sort((a, b) {
+          final c = porChave[a]!.length.compareTo(porChave[b]!.length);
+          return c != 0 ? c : a.compareTo(b);
+        });
+        for (final chave in chaves) {
+          final rotuloFinal = chave == chaves.last ? rotulo : '$rotulo ($chave)';
+          comRotulo[rotuloFinal] = porChave[chave]!;
         }
       }
-      // 4. Ordenação: autores e rótulos alfabéticos SEM acento (senão
-      //    'Índio'/'João' caem no fim, depois de todo nome sem acento);
-      //    hinos por num (tie-break nome).
-      final ordenado = <String, List<Hino>>{};
-      for (final rotulo in comRotulo.keys.toList()
-        ..sort((a, b) {
-          final c = _normalizar(a).compareTo(_normalizar(b));
-          return c != 0 ? c : a.compareTo(b);
-        })) {
-        final lista = comRotulo[rotulo]!
-          ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
-        ordenado[rotulo] = lista;
+    }
+    // 4. Ordenação: rótulo normalizado (sem acento, senão 'Índio' cai depois
+    //    de todo nome sem acento), empate → autor normalizado; hinos por num
+    //    (tie-break nome).
+    final lista = <GrupoHinario>[
+      for (final rotulo in comRotulo.keys)
+        GrupoHinario(
+          autor: _autorDoGrupo(comRotulo[rotulo]!),
+          rotulo: rotulo,
+          hinos: comRotulo[rotulo]!
+            ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome)),
+        ),
+    ];
+    lista.sort((a, b) {
+      final c = _normalizar(a.rotulo).compareTo(_normalizar(b.rotulo));
+      return c != 0 ? c : _normalizar(a.autor).compareTo(_normalizar(b.autor));
+    });
+    return _gruposGlobaisCache = lista;
+  }
+
+  /// Autor do grupo: o único autor quando TODOS os hinos o compartilham, senão
+  /// 'Diversos' (hinário coletivo). Vazio vira 'Sem autor'.
+  String _autorDoGrupo(List<Hino> hinos) {
+    final primeiro = _autorDe(hinos.first);
+    for (final h in hinos.skip(1)) {
+      if (_autorDe(h) != primeiro) return 'Diversos';
+    }
+    return primeiro;
+  }
+
+  String _autorDe(Hino h) => h.autor.isEmpty ? 'Sem autor' : h.autor;
+
+  /// Autor → os hinários GLOBAIS em que ele tem ao menos um hino, ordenados
+  /// por rótulo normalizado. Os grupos são os mesmos de [gruposGlobais]
+  /// (contagem global, abrem o hinário completo).
+  Map<String, List<GrupoHinario>> agrupar() {
+    final cache = _gruposCache;
+    if (cache != null) return cache;
+    final resultado = <String, List<GrupoHinario>>{};
+    for (final grupo in gruposGlobais()) {
+      for (final h in grupo.hinos) {
+        resultado.putIfAbsent(_autorDe(h), () => []).add(grupo);
       }
-      resultado[autor] = ordenado;
     }
     final autores = resultado.keys.toList()
       ..sort((a, b) {
         final c = _normalizar(a).compareTo(_normalizar(b));
         return c != 0 ? c : a.compareTo(b);
       });
-    return _gruposCache = <String, Map<String, List<Hino>>>{
-      for (final autor in autores) autor: resultado[autor]!,
+    return _gruposCache = <String, List<GrupoHinario>>{
+      for (final autor in autores) autor: _semRepetir(resultado[autor]!),
     };
+  }
+
+  /// Remove grupos repetidos (um autor com vários hinos no mesmo hinário).
+  List<GrupoHinario> _semRepetir(List<GrupoHinario> grupos) {
+    final vistos = <GrupoHinario>{};
+    return [for (final g in grupos) if (vistos.add(g)) g];
   }
 
   /// Nome de hinário mais comum no grupo; empate → ordem alfabética.
@@ -156,56 +195,32 @@ class HinosRepository {
     ];
   }
 
-  /// Grupos (do agrupamento por urlhinario) cujo rótulo OU autor casam todos
-  /// os tokens da consulta (normalizada). Query vazia → lista vazia.
-  /// Os grupos vêm do [agrupar] memoizado: o acervo real tem 265 grupos em 181
-  /// autores, e o que pesava era o reagrupamento dos 3087 hinos — agora pago
-  /// uma única vez por carga, então nenhum índice por grupo é necessário.
+  /// Grupos GLOBAIS cujo rótulo OU autor casam todos os tokens da consulta
+  /// (normalizada). Query vazia → lista vazia.
+  /// Os grupos vêm do [gruposGlobais] memoizado: o acervo real tem 84 hinários,
+  /// e o que pesava era o reagrupamento dos 3087 hinos — agora pago uma única
+  /// vez por carga, então nenhum índice por grupo é necessário.
   List<GrupoHinario> buscarGrupos(String query) {
     final tokens = _tokens(query);
     if (tokens.isEmpty) return const [];
-    final grupos = agrupar();
     final resultado = <GrupoHinario>[];
-    for (final autor in grupos.keys) {
-      for (final rotulo in grupos[autor]!.keys) {
-        final alvo = _normalizar('$rotulo $autor');
-        if (tokens.every(alvo.contains)) {
-          resultado.add(GrupoHinario(
-            autor: autor,
-            rotulo: rotulo,
-            hinos: grupos[autor]![rotulo]!,
-          ));
-        }
-      }
+    for (final grupo in gruposGlobais()) {
+      final alvo = _normalizar('${grupo.rotulo} ${grupo.autor}');
+      if (tokens.every(alvo.contains)) resultado.add(grupo);
     }
     return resultado;
-  }
-
-  /// Todos os grupos (de [agrupar]), em ordem alfabética pelo rótulo
-  /// (normalizado, sem acentos; empate → autor normalizado).
-  List<GrupoHinario> gruposPorNome() {
-    final grupos = agrupar();
-    final lista = <GrupoHinario>[
-      for (final autor in grupos.keys)
-        for (final rotulo in grupos[autor]!.keys)
-          GrupoHinario(autor: autor, rotulo: rotulo, hinos: grupos[autor]![rotulo]!),
-    ];
-    lista.sort((a, b) {
-      final c = _normalizar(a.rotulo).compareTo(_normalizar(b.rotulo));
-      return c != 0 ? c : _normalizar(a.autor).compareTo(_normalizar(b.autor));
-    });
-    return lista;
   }
 
   /// Chave de agrupamento do hino: urlhinario, ou o nome quando a url é vazia.
   String chaveDe(Hino h) => h.urlhinario.isEmpty ? h.hinario : h.urlhinario;
 
-  /// Todos os hinos do mesmo grupo do hino (mesma chave e mesmo autor),
-  /// ordenados por num (tie-break nome). Espelha o agrupamento da árvore.
+  /// Todos os hinos do hinário GLOBAL do hino (mesma urlhinario; hinos sem url:
+  /// o nome), de quaisquer autores, ordenados por num (tie-break nome). É o
+  /// grupo que a navegação abre — o coletivo completo, não o recorte do autor.
   List<Hino> hinosDoGrupo(Hino h) {
     final chave = chaveDe(h);
     return _hinos!
-        .where((x) => x.autor == h.autor && chaveDe(x) == chave)
+        .where((x) => chaveDe(x) == chave)
         .toList()
       ..sort((a, b) => a.num != b.num ? a.num.compareTo(b.num) : a.nome.compareTo(b.nome));
   }

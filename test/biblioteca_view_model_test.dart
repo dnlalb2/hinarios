@@ -22,6 +22,9 @@ void main() {
 
     expect(vm.emBusca, isFalse);
     expect(vm.grupos.keys, contains('A'));
+    // Visão plana: grupos GLOBAIS (o da url 'x' junta os autores A e B).
+    expect(vm.gruposHinarios.map((g) => '${g.autor}:${g.rotulo}'),
+        ['Diversos:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
 
     vm.setQuery('terra');
     expect(vm.emBusca, isTrue);

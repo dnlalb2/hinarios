@@ -23,10 +23,12 @@ class BibliotecaViewModel extends ChangeNotifier {
   bool get emBusca => _query.trim().isNotEmpty;
   bool get visaoPorAutor => _visaoPorAutor;
 
-  Map<String, Map<String, List<Hino>>> get grupos => _hinos.agrupar();
+  /// Árvore: autor → hinários globais em que ele tem ao menos um hino.
+  Map<String, List<GrupoHinario>> get grupos => _hinos.agrupar();
 
-  /// Grupos achatados e ordenados pelo rótulo (visão "Hinários").
-  List<GrupoHinario> get gruposPorNome => _hinos.gruposPorNome();
+  /// Todos os hinários como grupos globais por url, ordenados pelo rótulo
+  /// (visão "Hinários": lista plana, sem a árvore por autor).
+  List<GrupoHinario> get gruposHinarios => _hinos.gruposGlobais();
 
   /// Hinários (grupos) cujo rótulo ou autor casam com a busca.
   List<GrupoHinario> get hinariosEncontrados => _hinos.buscarGrupos(_query);

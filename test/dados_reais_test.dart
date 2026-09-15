@@ -14,16 +14,26 @@ void main() {
     final hinos = await repo.carregar();
     expect(hinos, hasLength(3087));
 
-    final grupos = repo.agrupar();
-    expect(grupos.keys.length, 181);
-    var soma = 0;
-    for (final porAutor in grupos.values) {
-      for (final lista in porAutor.values) {
-        soma += lista.length;
-      }
-    }
-    expect(soma, 3087); // todo hino em exatamente um grupo
-    expect(grupos['Mestre Irineu']!['O Cruzeiro Universal'], hasLength(134));
+    // GLOBAL por urlhinario: 84 hinários (84 urls — o site mostra 84), dos
+    // quais 35 são coletivos (hinos de autores diferentes num grupo só).
+    final grupos = repo.gruposGlobais();
+    expect(grupos, hasLength(84));
+    expect(grupos.fold<int>(0, (soma, g) => soma + g.hinos.length), 3087);
+    expect(grupos.where((g) => g.autor == 'Diversos'), hasLength(35));
+
+    final cruzeiro = grupos.firstWhere((g) => g.rotulo == 'O Cruzeiro Universal');
+    expect(cruzeiro.autor, 'Mestre Irineu');
+    expect(cruzeiro.hinos, hasLength(134));
+
+    // Coletivo real: 'caboclo guerreiro' tem 43 hinos de 41 autores — antes
+    // fragmentava em 41 grupos de 1 hino.
+    final caboclo = grupos.firstWhere((g) => g.rotulo == 'Caboclo Guerreiro');
+    expect(caboclo.autor, 'Diversos');
+    expect(caboclo.hinos, hasLength(43));
+    expect(repo.hinosDoGrupo(caboclo.hinos.first), hasLength(43));
+
+    // A árvore por autor segue com os 181 autores do acervo.
+    expect(repo.agrupar().keys, hasLength(181));
   });
 
   // C1: 179 cifras usam NBSP como preenchimento; o parse normaliza para

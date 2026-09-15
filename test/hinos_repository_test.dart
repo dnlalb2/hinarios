@@ -74,7 +74,7 @@ class HinosServiceOrdinalFake implements HinosService {
 /// Fixture LOCAL (não mexe na compartilhada) com rótulos cuja ordem só sai
 /// certa após normalização: por code point 'Índio' ('Í' = U+00CD) viria DEPOIS
 /// de 'Jardim' ('J' = U+004A); normalizado, 'indio' < 'jardim' e 'Índio' vem
-/// primeiro — é isso que prova que o [gruposPorNome] normaliza de verdade.
+/// primeiro — é isso que prova que o [gruposGlobais] normaliza de verdade.
 class HinosServiceRotulosFake implements HinosService {
   @override
   Future<String> carregarJson() async => jsonEncode([
@@ -96,6 +96,9 @@ class HinosServiceRotulosFake implements HinosService {
 /// 'Hino Índio' (o 'Í' do meio vence a comparação com 'Hino Jardim').
 /// Ordenado por code point cru viria ['Jardim', 'Índio'] e
 /// ['Hino Jardim', 'Hino Índio']; normalizado vem 'Índio'/'Hino Índio' antes.
+/// As urls 'ind'/'ind2' têm o mesmo rótulo 'Hino Índio': com a contagem GLOBAL
+/// empatada (1 hino cada), a chave menor ('ind') ganha o sufixo de colisão e a
+/// maior ('ind2') fica com o rótulo puro.
 class HinosServiceAutoresFake implements HinosService {
   @override
   Future<String> carregarJson() async => jsonEncode([
@@ -129,31 +132,52 @@ void main() {
     expect(identical(hinos, deNovo), isTrue); // cache
   });
 
-  test('agrupar: autor → hinário → ordem por num', () async {
+  test('gruposGlobais: url compartilhada por autores vira UM grupo (Diversos)', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final grupos = repo.gruposGlobais();
+    // Rótulo normalizado asc: 'hinario x' < 'hinario x (z)' < 'hinario y'.
+    expect(grupos.map((g) => '${g.autor}:${g.rotulo}'),
+        ['Diversos:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
+    // A url 'x' junta A (Três, Um) e B (Quatro) num grupo só, por num.
+    final x = grupos.first;
+    expect(x.hinos.map((h) => h.nome), ['Quatro', 'Três', 'Um']);
+    expect(x.hinos.map((h) => h.autor).toSet(), {'A', 'B'});
+    // Autor único: o grupo preserva o nome dele (não vira 'Diversos').
+    expect(grupos[1].autor, 'A');
+    expect(grupos[2].autor, 'A');
+  });
+
+  test('gruposGlobais: colisão de rótulo desambiguada pela contagem GLOBAL', () async {
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    // As urls 'x' (Três+Quatro+Um) e 'z' (Cinco) têm o mesmo nome mais comum:
+    // a maior ('x', 3 hinos com o de B) mantém o rótulo puro; a menor ganha sufixo.
+    final grupos = repo.gruposGlobais();
+    expect(grupos.map((g) => g.rotulo),
+        ['Hinário X', 'Hinário X (z)', 'Hinário Y']);
+    expect(grupos.first.hinos, hasLength(3)); // contagem global, não por autor
+    expect(grupos[1].hinos.map((h) => h.nome), ['Cinco']);
+  });
+
+  test('agrupar: autor → grupos GLOBAIS em que ele tem hino', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     final g = repo.agrupar();
     expect(g.keys, ['A', 'B']);
-    // grupo por url: 'Hinário X' é a url 'x' (Três, Um); a url 'z' (Cinco,
-    // mesmo nome) colide e fica como 'Hinário X (z)'.
-    expect(g['A']!.keys, ['Hinário X', 'Hinário X (z)', 'Hinário Y']);
-    expect(g['A']!['Hinário X']!.map((x) => x.num), [1, 2]);
-    expect(g['A']!['Hinário X (z)']!.map((x) => x.num), [5]);
-    expect(g['A']!['Hinário Y']!.map((x) => x.num), [1]);
-    expect(g['B']!['Hinário X']!.map((x) => x.num), [1]);
+    expect(g['A']!.map((x) => '${x.autor}:${x.rotulo}'),
+        ['Diversos:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
+    // O coletivo aparece sob os DOIS autores — e é o MESMO grupo de 3 hinos,
+    // não um recorte de 1 hino por autor.
+    expect(g['B']!.map((x) => '${x.autor}:${x.rotulo}'), ['Diversos:Hinário X']);
+    expect(g['B']!.single.hinos, hasLength(3));
+    expect(identical(g['A']!.first, g['B']!.single), isTrue);
   });
 
-  test('agrupar: colisão de rótulo desambiguada', () async {
+  test('gruposGlobais: memoizado (mesma lista entre chamadas)', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
-    final g = repo.agrupar();
-    // Duas urls no autor A têm o mesmo nome mais comum ('Hinário X'):
-    // url 'x' (2 hinos) mantém o rótulo puro; url 'z' (1 hino, menor) ganha sufixo.
-    expect(g['A']!.keys, contains('Hinário X'));
-    expect(g['A']!.keys, contains('Hinário X (z)'));
-    expect(g['A']!['Hinário X (z)']!.map((x) => x.num), [5]);
-    expect(g['A']!['Hinário X']!.map((x) => x.num), [1, 2]);
-    expect(g['A']!['Hinário X']!.length, greaterThan(g['A']!['Hinário X (z)']!.length));
+    expect(identical(repo.gruposGlobais(), repo.gruposGlobais()), isTrue);
   });
 
   test('agrupar: autores e rótulos ordenados sem acento (não code point)', () async {
@@ -164,7 +188,7 @@ void main() {
     // normalizado, 'indio' < 'jardim' → 'Índio' primeiro.
     expect(g.keys, ['Índio', 'Jardim']);
     // Idem intra-autor: cru daria ['Hino Jardim', 'Hino Índio'].
-    expect(g['Jardim']!.keys, ['Hino Índio', 'Hino Jardim']);
+    expect(g['Jardim']!.map((x) => x.rotulo), ['Hino Índio', 'Hino Jardim']);
   });
 
   test('buscar: tokens todos presentes; ignora maiúsculas; tom conta', () async {
@@ -198,49 +222,51 @@ void main() {
     expect(repo.buscar('2o refrao').map((h) => h.nome), ['Ordinal']); // º → o
   });
 
-  test('buscarGrupos: casa rótulo e autor, na ordem do agrupamento', () async {
+  test('buscarGrupos: casa rótulo e autor, na ordem dos grupos globais', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     expect(repo.buscarGrupos(''), isEmpty); // query vazia → lista vazia
     expect(repo.buscarGrupos('zzz'), isEmpty);
 
-    // sem acento e minúsculo: os 4 grupos do fixture têm 'Hinário' no rótulo.
+    // sem acento e minúsculo: os 3 grupos globais do fixture têm 'Hinário'.
     final grupos = repo.buscarGrupos('hinario');
     expect(grupos.map((g) => '${g.autor}:${g.rotulo}'),
-        ['A:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y', 'B:Hinário X']);
+        ['Diversos:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
     expect(grupos.first, isA<GrupoHinario>());
-    expect(grupos.first.hinos.map((h) => h.nome), ['Três', 'Um']); // ordem por num
-    expect(repo.buscarGrupos('HINÁRIO'), hasLength(4)); // caixa/acento não importam
+    // Ordem por num; o grupo da url 'x' traz A e B juntos (coletivo completo).
+    expect(grupos.first.hinos.map((h) => h.nome), ['Quatro', 'Três', 'Um']);
+    expect(repo.buscarGrupos('HINÁRIO'), hasLength(3)); // caixa/acento não importam
   });
 
   test('buscarGrupos: autor também casa; token é substring', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     expect(repo.buscarGrupos('y').map((g) => g.rotulo), ['Hinário Y']);
-    // 'a' é substring de todos os alvos (autor 'A') → casa todos os grupos.
-    expect(repo.buscarGrupos('a'), hasLength(4));
+    // 'a' é substring de todos os alvos (rótulos 'Hinário'/'Diversos'/'A').
+    expect(repo.buscarGrupos('a'), hasLength(3));
+    // 'a x': casa 'Hinário X'/'Diversos' e 'Hinário X (z)'/'A', não 'Hinário Y'.
     expect(repo.buscarGrupos('a x').map((g) => '${g.autor}:${g.rotulo}'),
-        ['A:Hinário X', 'A:Hinário X (z)', 'B:Hinário X']);
+        ['Diversos:Hinário X', 'A:Hinário X (z)']);
   });
 
-  test('gruposPorNome: achata o agrupamento e ordena por rótulo normalizado', () async {
+  test('gruposGlobais: lista achatada ordenada por rótulo normalizado', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
-    final grupos = repo.gruposPorNome();
-    expect(grupos, hasLength(4));
-    // Rótulo normalizado asc; empate ('Hinário X') → autor normalizado (A < B).
+    final grupos = repo.gruposGlobais();
+    expect(grupos, hasLength(3));
+    // Rótulo normalizado asc ('hinario x' < 'hinario x (z)' < 'hinario y').
     expect(grupos.map((g) => '${g.autor}:${g.rotulo}'),
-        ['A:Hinário X', 'B:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
+        ['Diversos:Hinário X', 'A:Hinário X (z)', 'A:Hinário Y']);
     // Os hinos de cada grupo vêm na ordem do agrupamento (por num).
-    expect(grupos.first.hinos.map((h) => h.nome), ['Três', 'Um']);
+    expect(grupos.first.hinos.map((h) => h.nome), ['Quatro', 'Três', 'Um']);
   });
 
-  test('gruposPorNome: acento não muda o lugar (normaliza, não code point)', () async {
+  test('gruposGlobais: acento não muda o lugar (normaliza, não code point)', () async {
     final repo = HinosRepository(service: HinosServiceRotulosFake());
     await repo.carregar();
     // 'Í' (U+00CD) > 'J' (U+004A) no code point cru: sem normalizar, 'Jardim'
     // viria primeiro. Como o sort usa _normalizar, 'indio' < 'jardim'.
-    expect(repo.gruposPorNome().map((g) => g.rotulo), ['Índio', 'Jardim']);
+    expect(repo.gruposGlobais().map((g) => g.rotulo), ['Índio', 'Jardim']);
   });
 
   test('hinosDoHinario: filtra e ordena por num', () async {
@@ -249,16 +275,17 @@ void main() {
     expect(repo.hinosDoHinario('x').map((x) => x.num), [1, 1, 2]);
   });
 
-  test('hinosDoGrupo: por url, e por nome quando sem url', () async {
+  test('hinosDoGrupo: o grupo GLOBAL do hino (por url, ou nome quando sem url)', () async {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     final um = (await repo.carregar()).firstWhere((h) => h.nome == 'Um');
     expect(repo.chaveDe(um), 'x');
-    // chave 'x' E autor A: Três(1), Um(2) — ordenados por num.
-    expect(repo.hinosDoGrupo(um).map((h) => h.nome), ['Três', 'Um']);
-    // Mesma chave 'x', autor B: o grupo do hino é só o dele (não cruza autores).
+    // chave 'x' inteira (sem filtro de autor): Três/Quatro(1), Um(2).
+    expect(repo.hinosDoGrupo(um).map((h) => h.nome), ['Quatro', 'Três', 'Um']);
+    expect(repo.hinosDoGrupo(um).map((h) => h.autor).toSet(), {'A', 'B'});
+    // Mesma chave 'x' a partir do hino do outro autor: MESMO grupo global.
     final quatro = (await repo.carregar()).firstWhere((h) => h.nome == 'Quatro');
-    expect(repo.hinosDoGrupo(quatro).map((h) => h.nome), ['Quatro']);
+    expect(repo.hinosDoGrupo(quatro).map((h) => h.nome), ['Quatro', 'Três', 'Um']);
 
     // Sem url: a chave é o NOME do hinário — grupos distintos não se juntam.
     final semUrl = HinosRepository(service: HinosServiceSemUrlFake());
