@@ -9,9 +9,10 @@ void main() {
     final repo = HinosRepository(service: HinosServiceFake());
     await repo.carregar();
     final lista = repo.hinosDoHinario('x'); // Três, Quatro, Um
-    final vm = HinarioViewModel(hinos: lista, autor: 'A', hinario: 'Hinário X');
+    final vm = HinarioViewModel(hinos: lista, autor: 'A', hinario: 'Hinário X', chave: 'x');
     expect(vm.autor, 'A');
     expect(vm.hinario, 'Hinário X');
+    expect(vm.chave, 'x'); // chave do grupo global — a estrela usa esta chave
     expect(vm.hinos.map((h) => h.num), [1, 1, 2]); // ordenado por num
     expect(identical(vm.hinos, lista), isTrue); // devolve a MESMA lista recebida
   });

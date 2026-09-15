@@ -1,6 +1,7 @@
 // lib/ui/features/hino/hino_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../data/repositories/hinos_repository.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../core/widgets/pinca_fonte.dart';
 import '../configuracao/configuracao_view.dart';
@@ -43,6 +44,7 @@ class HinoView extends StatelessWidget {
                           hinos: vm.doHinario,
                           autor: vm.hino.autor,
                           hinario: vm.hino.hinario,
+                          chave: context.read<HinosRepository>().chaveDe(vm.hino),
                         ),
                         child: HinarioView(
                           autor: vm.hino.autor,

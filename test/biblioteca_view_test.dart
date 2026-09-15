@@ -34,11 +34,14 @@ class HinosServiceColetivoFake implements HinosService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Última instância criada por montar(): os testes de estrela leem daqui.
+  late PreferenciasViewModel pref;
+
   Future<Widget> montar({HinosService? service, List<String> favoritos = const []}) async {
     SharedPreferences.setMockInitialValues({});
     final repo = HinosRepository(service: service ?? HinosServiceFake());
     await repo.carregar();
-    final pref = PreferenciasViewModel(service: PreferenciasService());
+    pref = PreferenciasViewModel(service: PreferenciasService());
     await pref.restaurar();
     for (final slug in favoritos) {
       pref.toggleFavorito(slug);
@@ -261,5 +264,69 @@ void main() {
     expect(find.text('1. Um'), findsOneWidget); // hinos dos DOIS autores
     expect(find.text('2. Dois'), findsOneWidget);
     expect(find.text('Diversos · 2 hinos'), findsOneWidget); // cabeçalho
+  });
+
+  testWidgets('estrela no tile da árvore favorita o hinário sem abri-lo', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.tap(find.text('A')); // expande o autor
+    await tester.pumpAndSettle();
+
+    final tile = find.widgetWithText(ListTile, 'Hinário Y');
+    await tester.tap(
+        find.descendant(of: tile, matching: find.byTooltip('Favoritar hinário')));
+    await tester.pumpAndSettle();
+
+    expect(pref.hinariosFavoritos, contains('y'));
+    // Favoritar não navega: a biblioteca segue na tela, com a estrela cheia.
+    expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+    expect(find.descendant(of: tile, matching: find.byIcon(Icons.star)), findsOneWidget);
+  });
+
+  testWidgets('estrela no tile da lista plana favorita o grupo', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.tap(segmento('Hinários'));
+    await tester.pumpAndSettle();
+
+    final tile = find.widgetWithText(ListTile, 'Hinário X');
+    await tester.tap(
+        find.descendant(of: tile, matching: find.byTooltip('Favoritar hinário')));
+    await tester.pumpAndSettle();
+
+    expect(pref.hinariosFavoritos, contains('x'));
+    expect(find.descendant(of: tile, matching: find.byIcon(Icons.star)), findsOneWidget);
+  });
+
+  testWidgets('só favoritos: seção Hinários + hinos favoritos completos', (tester) async {
+    await tester.pumpWidget(await montar(favoritos: ['a/3/tres']));
+    // Favorita o hinário pela estrela da árvore.
+    await tester.tap(find.text('A'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+        of: find.widgetWithText(ListTile, 'Hinário Y'),
+        matching: find.byTooltip('Favoritar hinário')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+
+    // 1ª seção: os hinários favoritados.
+    expect(find.text('Hinários'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Hinário Y'), findsOneWidget);
+    // 2ª seção: os hinos favoritos, inteiros (lista de leitura).
+    expect(find.byType(BlocoHino), findsOneWidget);
+    expect(find.text('1. Três'), findsOneWidget);
+
+    // Tocar no hinário favoritado abre o hinário COMPLETO.
+    await tester.tap(find.widgetWithText(ListTile, 'Hinário Y'));
+    await tester.pumpAndSettle();
+    expect(find.text('1. Dois'), findsOneWidget);
+  });
+
+  testWidgets('só favoritos sem hinário favoritado não mostra a seção', (tester) async {
+    await tester.pumpWidget(await montar(favoritos: ['a/3/tres']));
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hinários'), findsNothing); // sem grupos estrelados
+    expect(find.byType(BlocoHino), findsOneWidget); // só a lista de hinos
   });
 }

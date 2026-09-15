@@ -24,6 +24,31 @@ void main() {
     expect(notificado, greaterThanOrEqualTo(4));
   });
 
+  test('favoritar hinários alterna e notifica', () {
+    final vm = PreferenciasViewModel(service: PreferenciasService());
+    var notificado = 0;
+    vm.addListener(() => notificado++);
+    vm.toggleFavoritoHinario('x');
+    expect(vm.hinariosFavoritos, contains('x'));
+    vm.toggleFavoritoHinario('x');
+    expect(vm.hinariosFavoritos, isEmpty);
+    expect(notificado, 2);
+  });
+
+  test('hinários favoritos: round-trip no disco e visão imutável', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = PreferenciasService();
+    final vm = PreferenciasViewModel(service: service);
+    vm.toggleFavoritoHinario('x');
+    vm.toggleFavoritoHinario('col');
+    await Future<void>.delayed(Duration.zero); // deixa o fire-and-forget gravar
+
+    final vm2 = PreferenciasViewModel(service: service);
+    await vm2.restaurar();
+    expect(vm2.hinariosFavoritos, {'x', 'col'});
+    expect(() => vm2.hinariosFavoritos.add('y'), throwsUnsupportedError);
+  });
+
   test('transposição acumula módulo 12 por slug', () {
     final vm = PreferenciasViewModel(service: PreferenciasService());
     expect(vm.deslocamentoDe('x'), 0);

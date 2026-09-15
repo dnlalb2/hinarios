@@ -5,10 +5,15 @@ import '../services/hinos_service.dart';
 
 /// Grupo de hinos de um mesmo hinário (autor + rótulo) devolvido pela busca.
 class GrupoHinario {
+  /// Identidade do grupo (urlhinario, ou o nome quando a url é vazia) — é a
+  /// chave usada para favoritar o hinário inteiro. Independe do rótulo, que
+  /// pode ganhar sufixo de colisão.
+  final String chave;
   final String autor;
   final String rotulo; // rótulo do grupo (possivelmente com sufixo de colisão)
   final List<Hino> hinos;
-  const GrupoHinario({required this.autor, required this.rotulo, required this.hinos});
+  const GrupoHinario(
+      {required this.chave, required this.autor, required this.rotulo, required this.hinos});
 }
 
 /// Um resultado da busca. A lista compacta da biblioteca mostra o título e o
@@ -125,10 +130,14 @@ class HinosRepository {
       porRotulo.putIfAbsent(rotuloPorChave[chave]!, () => []).add(chave);
     }
     final comRotulo = <String, List<Hino>>{};
+    // Rótulo final → chave do grupo: o sufixo de colisão esconde a chave, mas
+    // ela segue sendo a identidade (é o que se favorita).
+    final chaveDoRotulo = <String, String>{};
     for (final rotulo in porRotulo.keys) {
       final chaves = porRotulo[rotulo]!;
       if (chaves.length == 1) {
         comRotulo[rotulo] = porChave[chaves.first]!;
+        chaveDoRotulo[rotulo] = chaves.first;
       } else {
         chaves.sort((a, b) {
           final c = porChave[a]!.length.compareTo(porChave[b]!.length);
@@ -137,6 +146,7 @@ class HinosRepository {
         for (final chave in chaves) {
           final rotuloFinal = chave == chaves.last ? rotulo : '$rotulo ($chave)';
           comRotulo[rotuloFinal] = porChave[chave]!;
+          chaveDoRotulo[rotuloFinal] = chave;
         }
       }
     }
@@ -146,6 +156,7 @@ class HinosRepository {
     final lista = <GrupoHinario>[
       for (final rotulo in comRotulo.keys)
         GrupoHinario(
+          chave: chaveDoRotulo[rotulo]!,
           autor: _autorDoGrupo(comRotulo[rotulo]!),
           rotulo: rotulo,
           hinos: comRotulo[rotulo]!

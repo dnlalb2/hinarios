@@ -5,11 +5,14 @@ class Preferencias {
   final bool temaEscuro;
   final double tamanhoFonte;
   final Set<String> favoritos;
+  /// Chaves dos hinários favoritados (ver `GrupoHinario.chave` no repositório).
+  final Set<String> hinariosFavoritos;
   final Map<String, int> deslocamentos;
   const Preferencias({
     this.temaEscuro = false,
     this.tamanhoFonte = 16,
     this.favoritos = const {},
+    this.hinariosFavoritos = const {},
     this.deslocamentos = const {},
   });
 }
@@ -21,6 +24,7 @@ class PreferenciasService {
     required bool temaEscuro,
     required double tamanhoFonte,
     required Set<String> favoritos,
+    required Set<String> hinariosFavoritos,
     required Map<String, int> deslocamentos,
   }) {
     // Gravações fire-and-forget em sequência: sem serializar, saves
@@ -32,6 +36,7 @@ class PreferenciasService {
       await p.setBool('hinario.tema', temaEscuro);
       await p.setDouble('hinario.fonte', tamanhoFonte);
       await p.setStringList('hinario.favoritos', favoritos.toList());
+      await p.setStringList('hinario.hinarios_favoritos', hinariosFavoritos.toList());
       await p.setString('hinario.toms', jsonEncode(deslocamentos));
     });
     _gravacaoPendente = gravacao.catchError((_) {});
@@ -44,6 +49,7 @@ class PreferenciasService {
       temaEscuro: p.getBool('hinario.tema') ?? false,
       tamanhoFonte: _fonteValida(p.getDouble('hinario.fonte')),
       favoritos: (p.getStringList('hinario.favoritos') ?? []).toSet(),
+      hinariosFavoritos: (p.getStringList('hinario.hinarios_favoritos') ?? []).toSet(),
       deslocamentos: _lerDeslocamentos(p.getString('hinario.toms')),
     );
   }

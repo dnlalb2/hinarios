@@ -18,7 +18,8 @@ class BibliotecaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<BibliotecaViewModel>();
-    context.watch<PreferenciasViewModel>(); // favoritos mudam os resultados filtrados
+    // Favoritos (hinos e hinários) mudam os resultados filtrados e as estrelas.
+    final pref = context.watch<PreferenciasViewModel>();
 
     return Scaffold(
       appBar: AppBar(
@@ -74,7 +75,10 @@ class BibliotecaView extends StatelessWidget {
             child: vm.emBusca || vm.soFavoritos
                 ? ListView(
                     children: [
-                      ..._secaoHinarios(context, vm),
+                      ..._secaoHinarios(context, vm, pref),
+                      // Favoritos sem busca: os hinários estrelados vêm antes,
+                      // como seção de leitura.
+                      ..._secaoHinariosFavoritos(context, vm, pref),
                       // Busca: resultados compactos (a letra inteira inundava a
                       // tela). Só o modo favoritos sem busca lista os hinos
                       // completos — ali a intenção é ler, não procurar.
@@ -89,8 +93,8 @@ class BibliotecaView extends StatelessWidget {
                     ],
                   )
                 : vm.visaoPorAutor
-                    ? _arvore(context, vm.grupos)
-                    : _listaDeHinarios(context, vm.gruposHinarios),
+                    ? _arvore(context, vm.grupos, pref)
+                    : _listaDeHinarios(context, vm.gruposHinarios, pref),
           ),
         ],
       ),
@@ -102,11 +106,7 @@ class BibliotecaView extends StatelessWidget {
   List<Widget> _secaoHinos(BuildContext context, BibliotecaViewModel vm) {
     final resultados = vm.resultados;
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Text('Hinos (${resultados.length})',
-            style: Theme.of(context).textTheme.titleSmall),
-      ),
+      _cabecalho(context, 'Hinos (${resultados.length})'),
       for (final r in resultados) _resultado(context, r),
     ];
   }
@@ -163,36 +163,90 @@ class BibliotecaView extends StatelessWidget {
     );
   }
 
+  /// Cabeçalho de seção da lista ('Hinários', 'Hinos (n)').
+  Widget _cabecalho(BuildContext context, String titulo) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text(titulo, style: Theme.of(context).textTheme.titleSmall),
+      );
+
+  /// Tile de um hinário (grupo global) na árvore, na lista plana e nas seções
+  /// de busca/favoritos: abre o hinário completo e traz a estrela que
+  /// favorita o grupo inteiro sem precisar abri-lo.
+  Widget _tileHinario(
+    BuildContext context,
+    PreferenciasViewModel pref,
+    GrupoHinario grupo, {
+    required String subtitulo,
+    bool dense = false,
+  }) {
+    return ListTile(
+      dense: dense,
+      leading: const Icon(Icons.menu_book),
+      title: Text(grupo.rotulo),
+      subtitle: Text(subtitulo),
+      trailing: IconButton(
+        icon: Icon(pref.hinariosFavoritos.contains(grupo.chave)
+            ? Icons.star
+            : Icons.star_border),
+        tooltip: 'Favoritar hinário',
+        onPressed: () => pref.toggleFavoritoHinario(grupo.chave),
+      ),
+      onTap: () => _abrirHinario(context, grupo),
+    );
+  }
+
+  /// Abre a página do hinário completo do grupo (mesma navegação em toda a
+  /// biblioteca). O grupo vai inteiro: o [HinarioViewModel] recebe também a
+  /// chave, que a estrela da AppBar usa para favoritar o HINÁRIO.
+  void _abrirHinario(BuildContext context, GrupoHinario grupo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => HinarioViewModel(
+            hinos: grupo.hinos,
+            autor: grupo.autor,
+            hinario: grupo.rotulo,
+            chave: grupo.chave,
+          ),
+          child: HinarioView(autor: grupo.autor, hinario: grupo.rotulo),
+        ),
+      ),
+    );
+  }
+
   /// Hinários que casam com a busca, acima dos hinos soltos. Só na busca
   /// (não no filtro "só favoritos") e quando há grupos.
-  List<Widget> _secaoHinarios(BuildContext context, BibliotecaViewModel vm) {
+  List<Widget> _secaoHinarios(
+      BuildContext context, BibliotecaViewModel vm, PreferenciasViewModel pref) {
     if (!vm.emBusca || vm.soFavoritos) return const [];
     final grupos = vm.hinariosEncontrados;
     if (grupos.isEmpty) return const [];
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Text('Hinários', style: Theme.of(context).textTheme.titleSmall),
-      ),
+      _cabecalho(context, 'Hinários'),
       for (final grupo in grupos)
-        ListTile(
-          leading: const Icon(Icons.menu_book),
-          title: Text(grupo.rotulo),
-          subtitle: Text('${grupo.autor} · ${grupo.hinos.length} hinos'),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider(
-                create: (_) => HinarioViewModel(
-                  hinos: grupo.hinos,
-                  autor: grupo.autor,
-                  hinario: grupo.rotulo,
-                ),
-                child: HinarioView(autor: grupo.autor, hinario: grupo.rotulo),
-              ),
-            ),
-          ),
-        ),
+        _tileHinario(context, pref, grupo,
+            subtitulo: '${grupo.autor} · ${grupo.hinos.length} hinos'),
+      const Divider(),
+    ];
+  }
+
+  /// Seção 'Hinários' do modo favoritos (sem busca): os grupos estrelados,
+  /// abertos pelo tile completo. Sem nenhum favoritado, a seção nem aparece —
+  /// a tela fica só com os hinos favoritos, como antes.
+  List<Widget> _secaoHinariosFavoritos(
+      BuildContext context, BibliotecaViewModel vm, PreferenciasViewModel pref) {
+    if (!vm.soFavoritos || vm.emBusca) return const [];
+    final grupos = [
+      for (final g in vm.gruposHinarios)
+        if (pref.hinariosFavoritos.contains(g.chave)) g,
+    ];
+    if (grupos.isEmpty) return const [];
+    return [
+      _cabecalho(context, 'Hinários'),
+      for (final grupo in grupos)
+        _tileHinario(context, pref, grupo,
+            subtitulo: '${grupo.autor} · ${grupo.hinos.length} hinos'),
       const Divider(),
     ];
   }
@@ -200,7 +254,8 @@ class BibliotecaView extends StatelessWidget {
   /// Árvore por autor: cada ExpansionTile lista os hinários GLOBAIS em que o
   /// autor tem ao menos um hino. Os grupos são os mesmos da lista plana — um
   /// coletivo aparece sob cada autor envolvido e abre o hinário completo.
-  Widget _arvore(BuildContext context, Map<String, List<GrupoHinario>> grupos) {
+  Widget _arvore(BuildContext context, Map<String, List<GrupoHinario>> grupos,
+      PreferenciasViewModel pref) {
     return ListView(
       children: [
         for (final autor in grupos.keys)
@@ -213,26 +268,10 @@ class BibliotecaView extends StatelessWidget {
                 '${grupos[autor]!.expand((g) => g.hinos).where((h) => (h.autor.isEmpty ? 'Sem autor' : h.autor) == autor).length} hinos'),
             children: [
               for (final g in grupos[autor]!)
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.menu_book),
-                  title: Text(g.rotulo),
-                  // O autor já é o cabeçalho do ExpansionTile — não se repete.
-                  subtitle: Text('${g.hinos.length} hinos'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider(
-                        create: (_) => HinarioViewModel(
-                          hinos: g.hinos,
-                          autor: g.autor,
-                          hinario: g.rotulo,
-                        ),
-                        child: HinarioView(autor: g.autor, hinario: g.rotulo),
-                      ),
-                    ),
-                  ),
-                ),
+                _tileHinario(context, pref, g,
+                    // O autor já é o cabeçalho do ExpansionTile — não se repete.
+                    subtitulo: '${g.hinos.length} hinos',
+                    dense: true),
             ],
           ),
       ],
@@ -241,28 +280,13 @@ class BibliotecaView extends StatelessWidget {
 
   /// Visão "Hinários": todos os grupos achatados numa lista alfabética pelo
   /// rótulo (o autor vira subtítulo). Navega para o mesmo [HinarioView] da árvore.
-  Widget _listaDeHinarios(BuildContext context, List<GrupoHinario> grupos) {
+  Widget _listaDeHinarios(
+      BuildContext context, List<GrupoHinario> grupos, PreferenciasViewModel pref) {
     return ListView(
       children: [
         for (final g in grupos)
-          ListTile(
-            leading: const Icon(Icons.menu_book),
-            title: Text(g.rotulo),
-            subtitle: Text('${g.autor} · ${g.hinos.length} hinos'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => HinarioViewModel(
-                    hinos: g.hinos,
-                    autor: g.autor,
-                    hinario: g.rotulo,
-                  ),
-                  child: HinarioView(autor: g.autor, hinario: g.rotulo),
-                ),
-              ),
-            ),
-          ),
+          _tileHinario(context, pref, g,
+              subtitulo: '${g.autor} · ${g.hinos.length} hinos'),
       ],
     );
   }

@@ -21,7 +21,7 @@ void main() {
     final pref = PreferenciasViewModel(service: PreferenciasService());
     await pref.restaurar();
     final vm = HinarioViewModel(
-      hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X');
+      hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X', chave: 'x');
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -51,7 +51,7 @@ void main() {
     final pref = PreferenciasViewModel(service: PreferenciasService());
     await pref.restaurar();
     final vm = HinarioViewModel(
-        hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X');
+        hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X', chave: 'x');
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -67,5 +67,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Configurações'), findsOneWidget);
     expect(find.text('Tema escuro'), findsOneWidget);
+  });
+
+  testWidgets('estrela na AppBar favorita o hinário inteiro', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repo = HinosRepository(service: HinosServiceFake());
+    await repo.carregar();
+    final pref = PreferenciasViewModel(service: PreferenciasService());
+    await pref.restaurar();
+    final vm = HinarioViewModel(
+        hinos: repo.hinosDoHinario('x'), autor: 'A', hinario: 'Hinário X', chave: 'x');
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: pref),
+          ChangeNotifierProvider.value(value: vm),
+        ],
+        child:
+            const MaterialApp(home: HinarioView(autor: 'A', hinario: 'Hinário X')),
+      ),
+    );
+    // A estrela fica na AppBar, antes da engrenagem — e é do HINÁRIO, não do
+    // hino (os BlocoHino da lista têm a sua própria, com tooltip 'Favorito').
+    Finder estrela(IconData icone) => find.descendant(
+        of: find.byType(AppBar), matching: find.byIcon(icone));
+    expect(find.byTooltip('Favoritar hinário'), findsOneWidget);
+    expect(estrela(Icons.star_border), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Favoritar hinário'));
+    await tester.pumpAndSettle();
+    expect(pref.hinariosFavoritos, contains('x'));
+    expect(estrela(Icons.star), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Favoritar hinário'));
+    await tester.pumpAndSettle();
+    expect(pref.hinariosFavoritos, isEmpty);
+    expect(estrela(Icons.star_border), findsOneWidget);
+    expect(find.byTooltip('Configurações'), findsOneWidget); // engrenagem intacta
   });
 }

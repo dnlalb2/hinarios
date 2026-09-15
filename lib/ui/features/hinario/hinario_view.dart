@@ -1,6 +1,7 @@
 // lib/ui/features/hinario/hinario_view.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/preferencias_view_model.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../core/widgets/pinca_fonte.dart';
 import '../configuracao/configuracao_view.dart';
@@ -14,10 +15,18 @@ class HinarioView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HinarioViewModel>();
+    final pref = context.watch<PreferenciasViewModel>();
     return Scaffold(
       appBar: AppBar(
         title: Text(hinario),
         actions: [
+          IconButton(
+            icon: Icon(pref.hinariosFavoritos.contains(vm.chave)
+                ? Icons.star
+                : Icons.star_border),
+            tooltip: 'Favoritar hinário',
+            onPressed: () => pref.toggleFavoritoHinario(vm.chave),
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Configurações',
