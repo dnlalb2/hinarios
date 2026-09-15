@@ -44,6 +44,15 @@ class ConfiguracaoView extends StatelessWidget {
               ],
             ),
           ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Letras e cifras extraídas de estudofino.org — uso comunitário.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );

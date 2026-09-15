@@ -21,7 +21,7 @@ class BibliotecaView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hinários'),
+        title: const Text('Hinário Cifrado CSJ'),
         actions: [
           IconButton(
             icon: Icon(vm.soFavoritos ? Icons.star : Icons.star_border),

@@ -73,8 +73,8 @@ void main() {
     await tester.pumpWidget(await montar());
     await tester.enterText(find.byType(TextField), 'hinario'); // 'Hinário' sem acento
     await tester.pumpAndSettle();
-    // AppBar + cabeçalho da seção de grupos.
-    expect(find.text('Hinários'), findsNWidgets(2));
+    // Cabeçalho da seção de grupos (a AppBar agora mostra o nome do app).
+    expect(find.text('Hinários'), findsOneWidget);
     // Grupos GLOBAIS (X coletivo, X (z) de A, Y de A) — só ListTile, não os
     // chips do BlocoHino. 'Hinário X' aparece UMA vez (o grupo de A e B juntos).
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsOneWidget);
@@ -97,7 +97,7 @@ void main() {
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsOneWidget);
     await tester.tap(find.byTooltip('Favoritos'));
     await tester.pumpAndSettle();
-    expect(find.text('Hinários'), findsOneWidget); // só o AppBar
+    expect(find.text('Hinários'), findsNothing); // a seção de grupos some no modo favoritos
     expect(find.widgetWithText(ListTile, 'Hinário X'), findsNothing);
   });
 

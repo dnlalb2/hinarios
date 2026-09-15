@@ -36,7 +36,7 @@ class HinariosApp extends StatelessWidget {
       ],
       child: Consumer<PreferenciasViewModel>(
         builder: (context, s, _) => MaterialApp(
-          title: 'Hinários EstudoFino',
+          title: 'Hinário Cifrado Céu de São José',
           debugShowCheckedModeBanner: false,
           theme: temaClaro(),
           darkTheme: temaEscuro(),
