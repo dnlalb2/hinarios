@@ -12,8 +12,23 @@ import '../hino/hino_view_model.dart';
 import '../configuracao/configuracao_view.dart';
 import 'biblioteca_view_model.dart';
 
-class BibliotecaView extends StatelessWidget {
+class BibliotecaView extends StatefulWidget {
   const BibliotecaView({super.key});
+
+  @override
+  State<BibliotecaView> createState() => _BibliotecaViewState();
+}
+
+class _BibliotecaViewState extends State<BibliotecaView> {
+  /// Texto do campo de busca. O estado de verdade é do [BibliotecaViewModel] —
+  /// o controller existe só para o botão de limpar poder esvaziar o campo.
+  final _buscaCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _buscaCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +60,20 @@ class BibliotecaView extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
+              controller: _buscaCtrl,
               decoration: InputDecoration(
                 hintText: 'Buscar hino, autor ou palavra da letra…',
                 prefixIcon: const Icon(Icons.search),
+                suffixIcon: vm.emBusca
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Limpar busca',
+                        onPressed: () {
+                          _buscaCtrl.clear();
+                          vm.setQuery('');
+                        },
+                      )
+                    : null,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onChanged: vm.setQuery,

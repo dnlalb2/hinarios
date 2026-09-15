@@ -221,6 +221,29 @@ void main() {
     expect(find.byType(SegmentedButton<bool>), findsNothing);
   });
 
+  testWidgets('botão de limpar aparece só com busca ativa', (tester) async {
+    await tester.pumpWidget(await montar());
+    expect(find.byTooltip('Limpar busca'), findsNothing); // campo vazio
+
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Limpar busca'), findsOneWidget);
+  });
+
+  testWidgets('botão de limpar esvazia o campo e sai da busca', (tester) async {
+    await tester.pumpWidget(await montar());
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    expect(find.text('Hinos (1)'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Limpar busca'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '');
+    expect(find.text('Hinos (1)'), findsNothing);
+    expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+  });
+
   testWidgets('cabeçalho do autor conta só os hinos dele no coletivo', (tester) async {
     await tester.pumpWidget(await montar(service: HinosServiceColetivoFake()));
 
