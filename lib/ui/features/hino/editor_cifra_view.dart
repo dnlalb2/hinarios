@@ -76,8 +76,10 @@ class _EditorCifraViewState extends State<EditorCifraView> {
 
   void _salvar() {
     final tom = _tom;
-    final acordes = [for (final c in _controllers) c.text.trim()];
-    if (tom == null || acordes.every((a) => a.isEmpty)) {
+    // Espaços à ESQUERDA posicionam o acorde sobre a sílaba da letra (mesma
+    // convenção do acervo, ver alinhar()) — só os da direita podem sair.
+    final acordes = [for (final c in _controllers) c.text.trimRight()];
+    if (tom == null || acordes.every((a) => a.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Escolha o tom e preencha ao menos uma linha')),
       );

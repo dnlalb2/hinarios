@@ -154,6 +154,17 @@ void main() {
     expect(find.text('D Bm'), findsOneWidget); // campo preenchido (tom original)
   });
 
+  // Regressão: o espaço inicial do acorde (coluna sobre a sílaba) precisa
+  // sobreviver ao caminho inteiro — cifra local → textoCifra → alinhar →
+  // render. O match exato da string prova que a coluna não se perdeu.
+  testWidgets('cifra local mantém os espaços de posicionamento dos acordes', (tester) async {
+    final cifras = CifrasLocaisViewModel(service: CifrasLocaisService());
+    cifras.salvar(semCifra.slug, const CifraLocal(tom: 'D', acordesPorLinha: ['   Am   E7']));
+    await tester.pumpWidget(montar(await vmNovo(), semCifra, cifras: cifras));
+
+    expect(find.text('   Am   E7'), findsOneWidget); // coluna preservada
+  });
+
   testWidgets('estrela alterna favorito', (tester) async {
     final vm = await vmNovo();
     await tester.pumpWidget(montar(vm, hino));

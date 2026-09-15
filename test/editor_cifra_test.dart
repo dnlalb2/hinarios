@@ -75,6 +75,29 @@ void main() {
     expect(find.text('abrir editor'), findsOneWidget); // rota fechada
   });
 
+  // Regressão: os espaços à ESQUERDA posicionam o acorde sobre a sílaba
+  // certa da letra — o trim() do salvar jogava o acorde para a coluna 0.
+  // Só os espaços à direita (sem valor posicional) podem sair.
+  testWidgets('salvar preserva os espaços de posicionamento dos acordes', (tester) async {
+    final vm = await montar(tester);
+    await escolherTom(tester, 'D');
+    await tester.enterText(find.byType(TextField).at(0), '   Am   E7');
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    expect(vm.cifraDe(hino.slug)!.acordesPorLinha.first, '   Am   E7');
+  });
+
+  testWidgets('salvar corta só os espaços à direita do acorde', (tester) async {
+    final vm = await montar(tester);
+    await escolherTom(tester, 'D');
+    await tester.enterText(find.byType(TextField).at(0), '  Am E7   ');
+    await tester.tap(find.byIcon(Icons.check));
+    await tester.pumpAndSettle();
+
+    expect(vm.cifraDe(hino.slug)!.acordesPorLinha.first, '  Am E7');
+  });
+
   testWidgets('sem tom ou sem nenhum acorde não salva', (tester) async {
     final vm = await montar(tester);
     await tester.enterText(find.byType(TextField).first, 'D Bm');
