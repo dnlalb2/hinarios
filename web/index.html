@@ -24,6 +24,21 @@
        O valor abaixo é o fallback: fundo do tema claro. -->
   <meta name="theme-color" content="#F6FAF6">
 
+  <!-- Aplica o tema salvo ao theme-color antes do app carregar: sem isso a
+       barra de status do PWA fica clara no boot do tema escuro. O app
+       reaplica em runtime (theme_color.dart). O shared_preferences grava no
+       localStorage com o prefixo 'flutter.' e valor JSON. -->
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('flutter.hinario.tema') === 'true') {
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', '#101510');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
