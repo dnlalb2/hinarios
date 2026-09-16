@@ -33,6 +33,31 @@ class HinosServiceColetivoFake implements HinosService {
       ]);
 }
 
+/// Fixture LOCAL: 25 hinos, um autor ('A'..'Y') e um hinário próprios cada —
+/// conteúdo bem maior que o viewport de teste (600px), o que permite rolar a
+/// lista e verificar que ela volta ao topo quando o conteúdo troca. Todas as
+/// letras trazem 'terra': a busca casa os 25 e a lista de resultados também
+/// rola.
+class HinosServiceGrandeFake implements HinosService {
+  static const _autores = 'ABCDEFGHIJKLMNOPQRSTUVWXY'; // 25
+
+  @override
+  Future<String> carregarJson() async => jsonEncode([
+        for (var i = 1; i <= _autores.length; i++)
+          {
+            'slug': 'a$i/$i/hino$i',
+            'num': i,
+            'nome': 'Hino $i',
+            'autor': _autores[i - 1],
+            'autor_full': _autores[i - 1],
+            'hinario': 'Hinário $i',
+            'urlhinario': 'h$i',
+            'ritmo': '',
+            'letra': 'Letra $i com terra',
+          },
+      ]);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -72,6 +97,74 @@ void main() {
     await tester.tap(segmento('Autores'));
     await tester.pumpAndSettle();
   }
+
+  /// Offset da lista de conteúdo do Expanded (resultados, árvore ou lista
+  /// plana). O finder é escopado ao ListView porque o TextField da busca
+  /// também tem um Scrollable.
+  double offsetDaLista(WidgetTester tester) => tester
+      .state<ScrollableState>(find.descendant(
+          of: find.byType(ListView), matching: find.byType(Scrollable)))
+      .position
+      .pixels;
+
+  testWidgets('busca devolve a lista ao topo', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    expect(find.text('Hinário 1'), findsOneWidget); // padrão: lista plana
+
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(offsetDaLista(tester), greaterThan(0)); // a lista andou para baixo
+
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hinos (25)'), findsOneWidget);
+    expect(offsetDaLista(tester), 0); // os resultados começam no topo
+  });
+
+  testWidgets('limpar a busca devolve a lista ao topo', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(offsetDaLista(tester), greaterThan(0));
+
+    await tester.tap(find.byTooltip('Limpar busca'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hinário 1'), findsOneWidget); // de volta à lista plana
+    expect(offsetDaLista(tester), 0);
+  });
+
+  testWidgets('trocar a visão devolve a lista ao topo', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(offsetDaLista(tester), greaterThan(0));
+
+    await irParaAutores(tester);
+
+    expect(find.byType(ExpansionTile), findsWidgets);
+    expect(offsetDaLista(tester), 0); // a árvore começa no topo
+  });
+
+  testWidgets('favoritar não devolve a lista ao topo', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+    final antes = offsetDaLista(tester);
+    expect(antes, greaterThan(0));
+
+    // Favoritar reconstrói a lista (a estrela muda) sem trocar o conteúdo:
+    // a posição fica onde está — só a TROCA de conteúdo volta ao topo.
+    await tester
+        .tap(find.byTooltip('Favoritar hinário').hitTestable().first);
+    await tester.pumpAndSettle();
+
+    expect(pref.hinariosFavoritos, isNotEmpty);
+    expect(offsetDaLista(tester), antes);
+  });
 
   testWidgets('mostra autores; expandir revela hinários', (tester) async {
     await tester.pumpWidget(await montar());

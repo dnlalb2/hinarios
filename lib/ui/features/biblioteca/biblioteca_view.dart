@@ -24,9 +24,32 @@ class _BibliotecaViewState extends State<BibliotecaView> {
   /// o controller existe só para o botão de limpar poder esvaziar o campo.
   final _buscaCtrl = TextEditingController();
 
+  /// Rolagem da lista de conteúdo do Expanded: resultados da busca, árvore por
+  /// autor ou lista plana de hinários — a MESMA instância nas três (o widget
+  /// troca, o controller não). Com controller próprio a lista não se pendura no
+  /// [PrimaryScrollController]; `keepScrollOffset: false` porque a posição não
+  /// deve ser lembrada entre visitas ao mesmo modo.
+  final _scrollCtrl = ScrollController(keepScrollOffset: false);
+
+  /// Chave da lista do Expanded: a assinatura do conteúdo exibido —
+  /// (`emBusca`, `query`, `visaoPorAutor`, `soFavoritos`). Trocar a busca, a
+  /// visão ou o filtro troca a chave, e o Flutter descarta a lista antiga
+  /// inteira: a nova monta do zero, já no topo.
+  ///
+  /// Rolar de volta ao topo ([jumpTo]) depois da troca não serve: o
+  /// [SliverList] da lista antiga guarda filhos em cache na altura anterior e
+  /// o layout seguinte "corrige" o offset em alguns pixels, parando pouco
+  /// abaixo do zero. Elemento novo não tem cache velho — e o topo é exato.
+  /// A chave só muda quando o conteúdo muda de modo: favoritar, rolar ou
+  /// redimensionar a tela preservam a posição. O record é comparado por valor
+  /// ([ValueKey]), não por identidade: cada build cria um record novo.
+  ValueKey<(bool, String, bool, bool)> _chaveDaLista(BibliotecaViewModel vm) =>
+      ValueKey((vm.emBusca, vm.query, vm.visaoPorAutor, vm.soFavoritos));
+
   @override
   void dispose() {
     _buscaCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -35,6 +58,7 @@ class _BibliotecaViewState extends State<BibliotecaView> {
     final vm = context.watch<BibliotecaViewModel>();
     // Favoritos (hinos e hinários) mudam os resultados filtrados e as estrelas.
     final pref = context.watch<PreferenciasViewModel>();
+    final chave = _chaveDaLista(vm);
 
     return Scaffold(
       appBar: AppBar(
@@ -100,6 +124,8 @@ class _BibliotecaViewState extends State<BibliotecaView> {
           Expanded(
             child: vm.emBusca || vm.soFavoritos
                 ? ListView(
+                    key: chave,
+                    controller: _scrollCtrl,
                     children: [
                       ..._secaoHinarios(context, vm, pref),
                       // Favoritos sem busca: os hinários estrelados vêm antes,
@@ -119,8 +145,8 @@ class _BibliotecaViewState extends State<BibliotecaView> {
                     ],
                   )
                 : vm.visaoPorAutor
-                    ? _arvore(context, vm.grupos, pref)
-                    : _listaDeHinarios(context, vm.gruposHinarios, pref),
+                    ? _arvore(context, vm.grupos, pref, chave)
+                    : _listaDeHinarios(context, vm.gruposHinarios, pref, chave),
           ),
         ],
       ),
@@ -281,8 +307,10 @@ class _BibliotecaViewState extends State<BibliotecaView> {
   /// autor tem ao menos um hino. Os grupos são os mesmos da lista plana — um
   /// coletivo aparece sob cada autor envolvido e abre o hinário completo.
   Widget _arvore(BuildContext context, Map<String, List<GrupoHinario>> grupos,
-      PreferenciasViewModel pref) {
+      PreferenciasViewModel pref, Key chave) {
     return ListView(
+      key: chave,
+      controller: _scrollCtrl,
       children: [
         for (final autor in grupos.keys)
           ExpansionTile(
@@ -306,9 +334,11 @@ class _BibliotecaViewState extends State<BibliotecaView> {
 
   /// Visão "Hinários": todos os grupos achatados numa lista alfabética pelo
   /// rótulo (o autor vira subtítulo). Navega para o mesmo [HinarioView] da árvore.
-  Widget _listaDeHinarios(
-      BuildContext context, List<GrupoHinario> grupos, PreferenciasViewModel pref) {
+  Widget _listaDeHinarios(BuildContext context, List<GrupoHinario> grupos,
+      PreferenciasViewModel pref, Key chave) {
     return ListView(
+      key: chave,
+      controller: _scrollCtrl,
       children: [
         for (final g in grupos)
           _tileHinario(context, pref, g,
