@@ -44,6 +44,49 @@ void main() {
     expect(h.letra.contains(' '), isFalse);
   });
 
+  // Regressão D1 (caso real do acervo): 11 cifras vieram do site só com
+  // lixo (';;;; ;;;;' ou 'undefined;undefined;') — nenhum acorde. Sem o
+  // guard a UI mostra 'Cifra em Am' + botões de transposição sem nada
+  // dentro; com o guard vira 'Adicionar cifra' (a comunidade preenche).
+  test('cifra só com lixo ";;;;" vira nula', () {
+    final h = Hino.fromJson({
+      'slug': 'jose-ricardo/6/agradecimento',
+      'num': 6,
+      'nome': 'Agradecimento',
+      'autor': '', 'autor_full': '', 'hinario': '', 'urlhinario': '', 'ritmo': '',
+      'letra': 'Agradeço',
+      'cifra': {'tom': 'Am', 'texto': ';;;; ;;;;'},
+    });
+    expect(h.cifra, isNull);
+  });
+
+  test('cifra só com "undefined;" vira nula', () {
+    final h = Hino.fromJson({
+      'slug': 'alex-polari/31/dama-das-flores',
+      'num': 31,
+      'nome': 'Dama das Flores',
+      'autor': '', 'autor_full': '', 'hinario': '', 'urlhinario': '', 'ritmo': '',
+      'letra': 'Dama',
+      'cifra': {'tom': 'E', 'texto': 'undefined;undefined;undefined;'},
+    });
+    expect(h.cifra, isNull);
+  });
+
+  // Controle: 'Am;E7' tem acorde de verdade e continua cifra.
+  test('cifra com acorde real ("Am;E7") não é afetada pelo guard', () {
+    final h = Hino.fromJson({
+      'slug': 'a/1/real',
+      'num': 1,
+      'nome': 'Real',
+      'autor': '', 'autor_full': '', 'hinario': '', 'urlhinario': '', 'ritmo': '',
+      'letra': 'Letra',
+      'cifra': {'tom': 'Am', 'texto': 'Am;E7'},
+    });
+    expect(h.cifra, isNotNull);
+    expect(h.cifra!.tom, 'Am');
+    expect(h.cifra!.texto, 'Am;E7');
+  });
+
   test('hino sem cifra nem abc', () {
     final h = Hino.fromJson({
       'slug': 'a', 'num': 0, 'nome': 'X', 'autor': '',

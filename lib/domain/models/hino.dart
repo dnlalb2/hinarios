@@ -34,9 +34,16 @@ class Hino {
     this.abc,
   });
 
+  /// 11 cifras do acervo vieram do site só com lixo (';;;; ;;;;' ou
+  /// 'undefined;undefined;') — nenhum acorde. Sem o guard a UI mostrava
+  /// 'Cifra em Am' com zero acordes (parecia quebrada); com ele viram
+  /// 'Adicionar cifra' e a comunidade preenche.
+  static bool _temAcorde(String texto) => RegExp(r'[A-G]').hasMatch(texto);
+
   factory Hino.fromJson(Map<String, dynamic> j) {
     final cifraJson = j['cifra'];
     final abc = (j['abc'] as String?)?.trim();
+    final cifra = cifraJson is Map<String, dynamic> ? Cifra.fromJson(cifraJson) : null;
     return Hino(
       slug: (j['slug'] as String?) ?? '',
       num: (j['num'] as int?) ?? 0,
@@ -47,7 +54,7 @@ class Hino {
       urlhinario: (j['urlhinario'] as String?) ?? '',
       ritmo: (j['ritmo'] as String?) ?? '',
       letra: ((j['letra'] as String?) ?? '').replaceAll(' ', ' '),
-      cifra: cifraJson is Map<String, dynamic> ? Cifra.fromJson(cifraJson) : null,
+      cifra: (cifra == null || !_temAcorde(cifra.texto)) ? null : cifra,
       abc: (abc == null || abc.isEmpty) ? null : abc,
     );
   }
