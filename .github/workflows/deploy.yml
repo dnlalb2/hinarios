@@ -41,6 +41,12 @@ jobs:
         # tela branca quando offline (PWA).
         run: flutter build web --release --no-web-resources-cdn --base-href=/${{ github.event.repository.name }}/
 
+      - name: Corrigir service worker (deploy em subpasta)
+        # O SW gerado calcula a chave pelo caminho absoluto da URL, mas o
+        # RESOURCES usa chaves relativas ao scope; sem este strip o lookup
+        # falha e o PWA nao abre offline.
+        run: python3 tool/patch_service_worker.py build/web/flutter_service_worker.js "${{ github.event.repository.name }}/"
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
