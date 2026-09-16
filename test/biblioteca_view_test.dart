@@ -107,6 +107,23 @@ void main() {
       .position
       .pixels;
 
+  /// Quanto do cabeçalho (busca + seletor) está à mostra: 1.0 inteiro, 0.0
+  /// escondido. Sobe do TextField — que fica MONTADO mesmo escondido — até o
+  /// AnimatedAlign que o envolve. `.last` é o mais externo: o nosso wrapper,
+  /// não algum AnimatedAlign interno do Material.
+  double? fatorDosFiltros(WidgetTester tester) => tester
+      .widgetList<AnimatedAlign>(find.ancestor(
+          of: find.byType(TextField), matching: find.byType(AnimatedAlign)))
+      .last
+      .heightFactor;
+
+  /// Rola a lista de conteúdo. Só o gesto do usuário mexe nos filtros: por isso
+  /// os testes usam drag, não `jumpTo`.
+  Future<void> rolar(WidgetTester tester, double dy) async {
+    await tester.drag(find.byType(ListView).first, Offset(0, dy));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('busca devolve a lista ao topo', (tester) async {
     await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
     expect(find.text('Hinário 1'), findsOneWidget); // padrão: lista plana
@@ -130,6 +147,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(offsetDaLista(tester), greaterThan(0));
 
+    // A rolagem escondeu o cabeçalho: puxar de volta para cima o reexibe —
+    // é assim que o usuário alcança o botão de limpar.
+    expect(fatorDosFiltros(tester), 0.0);
+    await rolar(tester, 200);
+
     await tester.tap(find.byTooltip('Limpar busca'));
     await tester.pumpAndSettle();
 
@@ -142,6 +164,11 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(offsetDaLista(tester), greaterThan(0));
+
+    // O seletor de visão vive no cabeçalho: escondido pela rolagem, ele só
+    // volta a ser tocável quando o usuário puxa a lista de volta para cima.
+    expect(fatorDosFiltros(tester), 0.0);
+    await rolar(tester, 200);
 
     await irParaAutores(tester);
 
@@ -460,5 +487,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hinários'), findsNothing); // sem grupos estrelados
     expect(find.byType(BlocoHino), findsOneWidget); // só a lista de hinos
+  });
+
+  testWidgets('filtros somem ao rolar para baixo e voltam ao rolar para cima', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    expect(fatorDosFiltros(tester), 1.0); // começam à mostra
+
+    await rolar(tester, -400);
+    expect(offsetDaLista(tester), greaterThan(0)); // a lista realmente andou
+    expect(fatorDosFiltros(tester), 0.0); // rolar para baixo esconde
+
+    await rolar(tester, 200);
+    expect(fatorDosFiltros(tester), 1.0); // rolar para cima (puxar) traz de volta
+  });
+
+  testWidgets('escondido, o campo continua montado e com o texto', (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+
+    await rolar(tester, -400);
+    expect(fatorDosFiltros(tester), 0.0);
+
+    // O cabeçalho some da tela, mas não do widget tree: o texto digitado
+    // sobrevive ao sumiço (só um ClipRect corta o que passa da altura 0).
+    expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text, 'terra');
+  });
+
+  testWidgets('limpar a busca com o cabeçalho escondido traz os filtros de volta',
+      (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await tester.enterText(find.byType(TextField), 'terra');
+    await tester.pumpAndSettle();
+    await rolar(tester, -400);
+    expect(fatorDosFiltros(tester), 0.0);
+
+    // Conteúdo novo (sai da busca, volta à lista plana): o cabeçalho volta
+    // junto — nunca se chega a um modo novo com os filtros fora da tela.
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hinário 1'), findsOneWidget); // de volta à lista plana
+    expect(fatorDosFiltros(tester), 1.0);
+  });
+
+  testWidgets('trocar de modo com o cabeçalho escondido traz os filtros de volta',
+      (tester) async {
+    await tester.pumpWidget(await montar(service: HinosServiceGrandeFake()));
+    await rolar(tester, -400);
+    expect(fatorDosFiltros(tester), 0.0);
+
+    // A estrela da AppBar fica FORA do cabeçalho: dá para trocar de modo sem
+    // antes puxar a lista de volta ao topo.
+    await tester.tap(find.byTooltip('Favoritos'));
+    await tester.pumpAndSettle();
+
+    expect(fatorDosFiltros(tester), 1.0);
   });
 }

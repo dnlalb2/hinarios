@@ -1,5 +1,7 @@
 // lib/ui/features/biblioteca/biblioteca_view.dart
 import 'package:flutter/material.dart';
+// ScrollDirection não vem no material.dart (mora no rendering).
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../../data/repositories/hinos_repository.dart';
@@ -31,6 +33,15 @@ class _BibliotecaViewState extends State<BibliotecaView> {
   /// deve ser lembrada entre visitas ao mesmo modo.
   final _scrollCtrl = ScrollController(keepScrollOffset: false);
 
+  /// O cabeçalho (busca + seletor) está à mostra? Rolar para baixo esconde,
+  /// rolar para cima traz de volta — e trocar o conteúdo (busca, visão,
+  /// favoritos) sempre traz: nenhum modo novo abre com os filtros fora da tela.
+  bool _mostrarFiltros = true;
+
+  /// Última assinatura de conteúdo vista pelo [build] — a mesma de
+  /// [_chaveDaLista]. Trocar de modo é o que reexibe o cabeçalho.
+  (bool, String, bool, bool)? _ultimoModo;
+
   /// Chave da lista do Expanded: a assinatura do conteúdo exibido —
   /// (`emBusca`, `query`, `visaoPorAutor`, `soFavoritos`). Trocar a busca, a
   /// visão ou o filtro troca a chave, e o Flutter descarta a lista antiga
@@ -59,6 +70,13 @@ class _BibliotecaViewState extends State<BibliotecaView> {
     // Favoritos (hinos e hinários) mudam os resultados filtrados e as estrelas.
     final pref = context.watch<PreferenciasViewModel>();
     final chave = _chaveDaLista(vm);
+    // Conteúdo novo (busca, visão ou favoritos mudaram): o cabeçalho volta,
+    // mesmo que o usuário o tenha escondido rolando. Atribuição direta — já
+    // estamos no build que vai desenhar o resultado.
+    if (_ultimoModo != chave.value) {
+      _ultimoModo = chave.value;
+      _mostrarFiltros = true;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -81,72 +99,105 @@ class _BibliotecaViewState extends State<BibliotecaView> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _buscaCtrl,
-              decoration: InputDecoration(
-                hintText: 'Buscar hino, autor ou palavra da letra…',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: vm.emBusca
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        tooltip: 'Limpar busca',
-                        onPressed: () {
-                          _buscaCtrl.clear();
-                          vm.setQuery('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          // Cabeçalho (busca + seletor): encolhe a zero quando o usuário rola
+          // a lista para baixo e volta quando ele rola para cima. Os widgets
+          // seguem MONTADOS — o ClipRect só corta o que passa da altura 0, e
+          // o texto digitado (e o foco) sobrevivem ao sumiço.
+          ClipRect(
+            child: AnimatedAlign(
+              alignment: Alignment.topCenter,
+              heightFactor: _mostrarFiltros ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 180),
+              child: Column(
+                // O pai (Column do body) dá altura ilimitada: sem o min o
+                // Column interno tentaria ocupar o infinito.
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TextField(
+                      controller: _buscaCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar hino, autor ou palavra da letra…',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: vm.emBusca
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                tooltip: 'Limpar busca',
+                                onPressed: () {
+                                  _buscaCtrl.clear();
+                                  vm.setQuery('');
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onChanged: vm.setQuery,
+                    ),
+                  ),
+                  // Seletor de visão: só quando a lista de navegação está visível.
+                  if (!(vm.emBusca || vm.soFavoritos))
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<bool>(
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                              visualDensity: VisualDensity.compact),
+                          segments: const [
+                            ButtonSegment(value: false, label: Text('Hinários')),
+                            ButtonSegment(value: true, label: Text('Autores')),
+                          ],
+                          selected: {vm.visaoPorAutor},
+                          onSelectionChanged: (_) => vm.alternarVisao(),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              onChanged: vm.setQuery,
             ),
           ),
-          // Seletor de visão: só quando a lista de navegação está visível.
-          if (!(vm.emBusca || vm.soFavoritos))
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  style: const ButtonStyle(visualDensity: VisualDensity.compact),
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Hinários')),
-                    ButtonSegment(value: true, label: Text('Autores')),
-                  ],
-                  selected: {vm.visaoPorAutor},
-                  onSelectionChanged: (_) => vm.alternarVisao(),
-                ),
-              ),
-            ),
           Expanded(
-            child: vm.emBusca || vm.soFavoritos
-                ? ListView(
-                    key: chave,
-                    controller: _scrollCtrl,
-                    children: [
-                      ..._secaoHinarios(context, vm, pref),
-                      // Favoritos sem busca: os hinários estrelados vêm antes,
-                      // como seção de leitura.
-                      ..._secaoHinariosFavoritos(context, vm, pref),
-                      // Busca: resultados compactos (a letra inteira inundava a
-                      // tela). Só o modo favoritos sem busca lista os hinos
-                      // completos — ali a intenção é ler, não procurar.
-                      if (vm.emBusca)
-                        ..._secaoHinos(context, vm)
-                      else
-                        for (final r in vm.resultados)
-                          InkWell(
-                            onTap: () => _abrirHino(context, r.hino),
-                            child: BlocoHino(hino: r.hino),
-                          ),
-                    ],
-                  )
-                : vm.visaoPorAutor
-                    ? _arvore(context, vm.grupos, pref, chave)
-                    : _listaDeHinarios(context, vm.gruposHinarios, pref, chave),
+            // Só gesto do USUÁRIO esconde os filtros: rolagem programática ou
+            // a lista nova montando já no topo não emitem UserScrollNotification.
+            child: NotificationListener<UserScrollNotification>(
+              onNotification: (n) {
+                if (n.direction == ScrollDirection.reverse && _mostrarFiltros) {
+                  setState(() => _mostrarFiltros = false);
+                } else if (n.direction == ScrollDirection.forward &&
+                    !_mostrarFiltros) {
+                  setState(() => _mostrarFiltros = true);
+                }
+                return false;
+              },
+              child: vm.emBusca || vm.soFavoritos
+                  ? ListView(
+                      key: chave,
+                      controller: _scrollCtrl,
+                      children: [
+                        ..._secaoHinarios(context, vm, pref),
+                        // Favoritos sem busca: os hinários estrelados vêm antes,
+                        // como seção de leitura.
+                        ..._secaoHinariosFavoritos(context, vm, pref),
+                        // Busca: resultados compactos (a letra inteira inundava a
+                        // tela). Só o modo favoritos sem busca lista os hinos
+                        // completos — ali a intenção é ler, não procurar.
+                        if (vm.emBusca)
+                          ..._secaoHinos(context, vm)
+                        else
+                          for (final r in vm.resultados)
+                            InkWell(
+                              onTap: () => _abrirHino(context, r.hino),
+                              child: BlocoHino(hino: r.hino),
+                            ),
+                      ],
+                    )
+                  : vm.visaoPorAutor
+                      ? _arvore(context, vm.grupos, pref, chave)
+                      : _listaDeHinarios(context, vm.gruposHinarios, pref, chave),
+            ),
           ),
         ],
       ),
