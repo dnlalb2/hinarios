@@ -6,9 +6,11 @@ import 'package:hinarios_app/main.dart';
 import 'package:hinarios_app/data/repositories/hinos_repository.dart';
 import 'package:hinarios_app/data/services/cifras_locais_service.dart';
 import 'package:hinarios_app/data/services/hinos_service.dart';
+import 'package:hinarios_app/data/services/instalacao_service.dart';
 import 'package:hinarios_app/data/services/precache_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
 import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
+import 'package:hinarios_app/ui/core/instalacao_view_model.dart';
 import 'package:hinarios_app/ui/core/precache_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
@@ -33,6 +35,8 @@ void main() {
       hinosRepository: repo,
       cifrasLocais: cifras,
       precache: precache,
+      // Fora da web o serviço cai no stub: não há banner de instalação.
+      instalacao: InstalacaoViewModel(service: InstalacaoService.instancia),
     ));
     await tester.pumpAndSettle();
   }

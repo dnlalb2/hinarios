@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/bloco_hino.dart';
 import '../../../data/repositories/hinos_repository.dart';
 import '../../../domain/models/hino.dart';
+import '../../core/instalacao_view_model.dart';
 import '../../core/preferencias_view_model.dart';
 import '../hinario/hinario_view.dart';
 import '../hinario/hinario_view_model.dart';
@@ -99,6 +100,11 @@ class _BibliotecaViewState extends State<BibliotecaView> {
       ),
       body: Column(
         children: [
+          // Convite para instalar o app na tela inicial. Fica FORA do
+          // cabeçalho que some ao rolar: o convite é para quem acabou de
+          // chegar, sem pressa, e não deve reaparecer a cada rolagem.
+          if (context.watch<InstalacaoViewModel>().mostrarBanner)
+            _bannerInstalacao(context),
           // Cabeçalho (busca + seletor): encolhe a zero quando o usuário rola
           // a lista para baixo e volta quando ele rola para cima. Os widgets
           // seguem MONTADOS — o ClipRect só corta o que passa da altura 0, e
@@ -200,6 +206,49 @@ class _BibliotecaViewState extends State<BibliotecaView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Convite para instalar o PWA, no topo do corpo.
+  ///
+  /// Android/Chrome ([InstalacaoViewModel.pronto]): o botão 'Instalar' abre o
+  /// prompt nativo. iPhone: não existe prompt — o banner ensina o caminho
+  /// manual e por isso não tem botão. O X dispensa nesta visita.
+  Widget _bannerInstalacao(BuildContext context) {
+    final vm = context.watch<InstalacaoViewModel>();
+    final cores = Theme.of(context).colorScheme;
+    final estilo = TextStyle(color: cores.onPrimaryContainer);
+    return Material(
+      color: cores.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Row(
+          children: [
+            Icon(Icons.install_mobile, color: cores.onPrimaryContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                vm.pronto
+                    ? 'Instale o app para usar offline no salão.'
+                    : 'Para instalar: toque em Compartilhar → Adicionar à Tela de Início.',
+                style: estilo,
+              ),
+            ),
+            if (vm.pronto)
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: cores.primary),
+                onPressed: vm.instalar,
+                child: const Text('Instalar'),
+              ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              color: cores.onPrimaryContainer,
+              tooltip: 'Dispensar',
+              onPressed: vm.dispensar,
+            ),
+          ],
+        ),
       ),
     );
   }

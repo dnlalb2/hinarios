@@ -9,11 +9,13 @@ import 'package:hinarios_app/data/services/cifras_locais_service.dart';
 import 'package:hinarios_app/data/services/hinos_service.dart';
 import 'package:hinarios_app/data/services/preferencias_service.dart';
 import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
+import 'package:hinarios_app/ui/core/instalacao_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
 import 'package:hinarios_app/ui/features/biblioteca/biblioteca_view.dart';
 import 'package:hinarios_app/ui/features/biblioteca/biblioteca_view_model.dart';
 import 'hinos_repository_test.dart' show HinosServiceFake;
+import 'instalacao_view_model_test.dart' show InstalacaoServiceFalso;
 
 /// Fixture LOCAL: hinário coletivo — 2 hinos com a MESMA url 'col' mas autores
 /// distintos ('X1'/'X2'), o caso real de 35 dos 84 hinários do acervo.
@@ -64,7 +66,10 @@ void main() {
   // Última instância criada por montar(): os testes de estrela leem daqui.
   late PreferenciasViewModel pref;
 
-  Future<Widget> montar({HinosService? service, List<String> favoritos = const []}) async {
+  Future<Widget> montar(
+      {HinosService? service,
+      List<String> favoritos = const [],
+      InstalacaoViewModel? instalacao}) async {
     SharedPreferences.setMockInitialValues({});
     final repo = HinosRepository(service: service ?? HinosServiceFake());
     await repo.carregar();
@@ -78,6 +83,9 @@ void main() {
       providers: [
         ChangeNotifierProvider.value(value: pref),
         ChangeNotifierProvider.value(value: vm),
+        // Sem serviço injetado cai no stub (fora da web não há PWA a
+        // instalar): o banner fica escondido e os testes de sempre não mudam.
+        ChangeNotifierProvider.value(value: instalacao ?? InstalacaoViewModel()),
         // o BlocoHino lê as cifras próprias do usuário
         ChangeNotifierProvider.value(
             value: CifrasLocaisViewModel(service: CifrasLocaisService())),
@@ -544,5 +552,66 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fatorDosFiltros(tester), 1.0);
+  });
+
+  testWidgets('banner de instalação aparece com o botão Instalar (Android)',
+      (tester) async {
+    final servico = InstalacaoServiceFalso(pronto: true);
+    final instalacao = InstalacaoViewModel(service: servico);
+
+    await tester.pumpWidget(await montar(instalacao: instalacao));
+
+    expect(find.text('Instale o app para usar offline no salão.'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Instalar'), findsOneWidget);
+    expect(find.byTooltip('Dispensar'), findsOneWidget);
+  });
+
+  testWidgets('no iOS o banner ensina o caminho, sem botão Instalar',
+      (tester) async {
+    final instalacao =
+        InstalacaoViewModel(service: InstalacaoServiceFalso(ehIos: true));
+
+    await tester.pumpWidget(await montar(instalacao: instalacao));
+
+    expect(
+        find.text(
+            'Para instalar: toque em Compartilhar → Adicionar à Tela de Início.'),
+        findsOneWidget);
+    expect(find.text('Instalar'), findsNothing);
+    expect(find.byTooltip('Dispensar'), findsOneWidget);
+  });
+
+  testWidgets('o X dispensa o banner', (tester) async {
+    final instalacao =
+        InstalacaoViewModel(service: InstalacaoServiceFalso(pronto: true));
+
+    await tester.pumpWidget(await montar(instalacao: instalacao));
+    await tester.tap(find.byTooltip('Dispensar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Instale o app para usar offline no salão.'), findsNothing);
+    expect(find.byTooltip('Dispensar'), findsNothing);
+  });
+
+  testWidgets('instalar pelo banner chama o prompt e some com o banner',
+      (tester) async {
+    final servico = InstalacaoServiceFalso(pronto: true);
+    final instalacao = InstalacaoViewModel(service: servico);
+
+    await tester.pumpWidget(await montar(instalacao: instalacao));
+    await tester.tap(find.widgetWithText(TextButton, 'Instalar'));
+    await tester.pumpAndSettle();
+
+    expect(servico.pedidos, 1);
+    expect(find.text('Instale o app para usar offline no salão.'), findsNothing);
+  });
+
+  testWidgets('sem aviso do navegador o banner não aparece', (tester) async {
+    final instalacao = InstalacaoViewModel(service: InstalacaoServiceFalso());
+
+    await tester.pumpWidget(await montar(instalacao: instalacao));
+
+    expect(find.text('Instale o app para usar offline no salão.'), findsNothing);
+    expect(find.byTooltip('Dispensar'), findsNothing);
   });
 }
