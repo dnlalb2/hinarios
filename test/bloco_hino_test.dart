@@ -280,6 +280,26 @@ void main() {
     expect(find.byType(DiagramaAcorde), findsOneWidget);
   });
 
+  // O toque no MEIO da linha, onde só há espaço (entre um acorde e outro), não
+  // abre folha nenhuma: a coluna do espaço não pertence a acorde algum. É o
+  // contraponto do teste acima — um hit-test que abrisse o acorde "mais
+  // próximo" passaria lá e falharia aqui.
+  testWidgets('tocar no espaço entre os acordes não abre o diagrama', (tester) async {
+    await tester.pumpWidget(montar(await vmNovo(), hino));
+
+    final paragrafo = tester.renderObject<RenderParagraph>(find.text('D Bm'));
+    // Centro da caixa do espaço (caractere 1..2) — longe dos dois acordes.
+    final espaco = paragrafo
+        .getBoxesForSelection(const TextSelection(baseOffset: 1, extentOffset: 2))
+        .first
+        .toRect();
+    await tester.tapAt(paragrafo.localToGlobal(espaco.center));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('acorde-titulo')), findsNothing);
+    expect(find.byType(DiagramaAcorde), findsNothing);
+  });
+
   // O acorde tocado é o que está NA TELA: com meio tom acima, o 'Bm' vira 'Cm'
   // e é o desenho do 'Cm' que abre.
   testWidgets('acorde transposto abre o diagrama do acorde transposto', (tester) async {
