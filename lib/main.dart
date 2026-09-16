@@ -37,10 +37,12 @@ Future<void> main() async {
     cifrasLocais: cifrasLocais,
     precache: precache,
   ));
-  // Depois do primeiro quadro: confere o que já está em cache e pede ao
-  // service worker o download do que falta — partituras e acordes inclusive.
-  // A conferida é local e barata (não disputa banda com o boot); o download
-  // em si acontece no service worker. Fora da web é um no-op.
+  // Depois do primeiro quadro: confere o que já está em cache e baixa o que
+  // falta — partituras e acordes inclusive —, asset por asset, com a tela de
+  // preparação mostrando o progresso. A conferida é local e barata (não disputa
+  // banda com o boot); o download é do próprio app, para o progresso ser real
+  // (o service worker cacheia cada requisição que passa por ele). Fora da web
+  // é um no-op.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(precache.iniciar());
   });

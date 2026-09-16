@@ -9,12 +9,13 @@ import '../../ui/core/cache_offline.dart';
 class PrecacheService {
   const PrecacheService();
 
-  /// Quantos arquivos do acervo já estão no cache (-1 = não se aplica).
+  /// Quantos assets do acervo já estão no cache (-1 = não se aplica).
   Future<int> arquivosEmCache() => arquivosDeAcervoEmCache();
 
   /// O navegador está online? (fora da web, sempre true: o app não usa rede)
   bool get online => onlineAgora;
 
-  /// Pede ao service worker o download de tudo que ainda falta (no-op fora da web).
-  void solicitar() => solicitarCacheCompleto();
+  /// Baixa um asset (chave do AssetManifest, ex.: `assets/partituras/x.svg`);
+  /// no-op fora da web. Lança se o download falhar.
+  Future<void> baixar(String caminho) => baixarAsset(caminho);
 }
