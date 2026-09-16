@@ -10,7 +10,7 @@ void main() {
         home: Scaffold(
           body: LinhaAcordes(
             texto: texto,
-            estilo: const TextStyle(fontFamily: 'monospace', fontSize: 20),
+            estilo: const TextStyle(fontFamily: 'MonoAcervo', fontSize: 20),
           ),
         ),
       );
@@ -45,7 +45,7 @@ void main() {
             width: 100, // 5 colunas: 'D Bm A D' quebra
             child: LinhaAcordes(
               texto: 'D Bm A D',
-              estilo: const TextStyle(fontFamily: 'monospace', fontSize: 20),
+              estilo: const TextStyle(fontFamily: 'MonoAcervo', fontSize: 20),
             ),
           ),
         ),

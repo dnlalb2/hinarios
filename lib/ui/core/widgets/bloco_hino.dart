@@ -142,7 +142,7 @@ class BlocoHino extends StatelessWidget {
     // (o "sai um pouco para a esquerda" que o usuário via). Zero dos dois
     // lados = mesma coluna no formulário e na exibição.
     final estiloAcorde = Theme.of(context).textTheme.bodyMedium!.copyWith(
-          fontFamily: 'monospace',
+          fontFamily: 'MonoAcervo',
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w600,
           fontSize: tamanhoFonte,

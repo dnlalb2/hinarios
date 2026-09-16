@@ -1,0 +1,37 @@
+Roboto Mono — fonte monoespaçada empacotada no app (família "MonoAcervo")
+=========================================================================
+
+Por que esta fonte está aqui
+----------------------------
+O editor e o bloco do hino posicionam os acordes por COLUNA DE CARACTERE
+(ver lib/domain/use_cases/chordpro.dart). Isso só funciona se todo caractere
+— inclusive o espaço — tiver exatamente a mesma largura. No Flutter web
+`fontFamily: 'monospace'` NÃO resolve para uma fonte monoespaçada de verdade:
+cai no Roboto proporcional, e o espaço passa a medir ~0,25em. Resultado: os
+acordes escorregam para a ESQUERDA e um acorde no fim da linha (ex.:
+"[G]É para mim ter fé[C]") aparece sobre a sílaba errada.
+
+Empacotar a fonte resolve na raiz, em qualquer plataforma/renderizador.
+Nas duas fontes abaixo TODOS os 1006 glifos têm a mesma largura (1229
+unidades), incluindo o espaço.
+
+Arquivos
+--------
+- RobotoMono-Regular.ttf   — peso 400 (letra / cifra padrão)
+- RobotoMono-SemiBold.ttf  — peso 600 (linha de acordes, negrito)
+- OFL.txt                  — licença completa (exigida pela OFL)
+
+Declaradas em pubspec.yaml sob a família "MonoAcervo" (nome interno da
+família Flutter; a fonte em si é a Roboto Mono).
+
+Fonte (origem)
+--------------
+Font name:  Roboto Mono
+Version:    3.001
+Copyright:  2015 The Roboto Mono Project Authors
+            (https://github.com/googlefonts/robotomono)
+Licença:    SIL Open Font License, Version 1.1 (OFL-1.1) — ver OFL.txt
+Origem:     https://github.com/google/fonts/tree/main/ofl/robotomono
+            arquivo original: RobotoMono[wght].ttf (fonte variável)
+            Os dois .ttf estáticos foram gerados a partir dela com
+            `fonttools varLib.instancer` em wght=400 e wght=600.

@@ -67,6 +67,19 @@ flutter:
     - assets/acordes.json
     - assets/partituras/
 
+  # Fonte monoespaçada REAL empacotada (Roboto Mono 3.001, OFL-1.1).
+  # O `fontFamily: 'monospace'` não resolve para uma fonte monoespaçada no
+  # Flutter web (cai no Roboto proporcional) e os acordes — posicionados por
+  # coluna de caractere — escorregavam para a esquerda. Ver
+  # assets/fonts/LEIA-ME.txt para a licença e a origem.
+  fonts:
+    - family: MonoAcervo
+      fonts:
+        - asset: assets/fonts/RobotoMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/RobotoMono-SemiBold.ttf
+          weight: 600
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

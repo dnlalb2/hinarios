@@ -79,10 +79,10 @@ void main() {
     await tester.pumpWidget(montar(vm, hino));
     final acorde = tester.widget<Text>(find.text('D Bm'));
     expect(acorde.style!.fontSize, 22); // = vm.tamanhoFonte, sem escala própria
-    expect(acorde.style!.fontFamily, 'monospace');
+    expect(acorde.style!.fontFamily, 'MonoAcervo');
     final letra = tester.widget<Text>(find.text('Sol, Lua, Estrela'));
     expect(letra.style!.fontSize, acorde.style!.fontSize);
-    expect(letra.style!.fontFamily, 'monospace'); // mesma fonte dos acordes
+    expect(letra.style!.fontFamily, 'MonoAcervo'); // mesma fonte dos acordes
   });
 
   testWidgets('botão + transposta acordes e tom exibido', (tester) async {
@@ -225,8 +225,8 @@ void main() {
 
     final acorde = tester.widget<Text>(find.text('   Am'));
     final letra = tester.widget<Text>(find.text('Só a letra'));
-    expect(acorde.style!.fontFamily, 'monospace');
-    expect(letra.style!.fontFamily, 'monospace');
+    expect(acorde.style!.fontFamily, 'MonoAcervo');
+    expect(letra.style!.fontFamily, 'MonoAcervo');
     expect(acorde.style!.fontSize, letra.style!.fontSize); // mesma coluna
     expect(acorde.style!.fontSize, 22);
   });

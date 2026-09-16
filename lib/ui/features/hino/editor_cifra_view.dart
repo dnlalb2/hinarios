@@ -127,7 +127,7 @@ class _EditorCifraViewState extends State<EditorCifraView> {
     // um preview fiel do que a música vai mostrar.
     final tamanhoFonte = context.read<PreferenciasViewModel>().tamanhoFonte;
     final estiloMono = TextStyle(
-      fontFamily: 'monospace',
+      fontFamily: 'MonoAcervo',
       fontSize: tamanhoFonte,
       letterSpacing: 0,
     );

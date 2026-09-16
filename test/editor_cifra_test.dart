@@ -71,7 +71,7 @@ void main() {
     expect(find.textContaining('entre colchetes antes da palavra'), findsOneWidget);
 
     final campo = tester.widget<TextField>(find.byType(TextField));
-    expect(campo.style!.fontFamily, 'monospace'); // 1:1 com a exibição
+    expect(campo.style!.fontFamily, 'MonoAcervo'); // 1:1 com a exibição
     expect(campo.style!.fontSize, 20);
     expect(campo.maxLines, isNull); // cresce com o texto
     expect(campo.expands, isTrue);
