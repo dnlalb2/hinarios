@@ -1,10 +1,14 @@
 // lib/main.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'data/repositories/hinos_repository.dart';
+import 'data/services/acordes_service.dart';
 import 'data/services/cifras_locais_service.dart';
 import 'data/services/hinos_service.dart';
 import 'data/services/preferencias_service.dart';
+import 'ui/core/cache_offline.dart';
 import 'ui/core/cifras_locais_view_model.dart';
 import 'ui/core/preferencias_view_model.dart';
 import 'ui/core/theme_color.dart';
@@ -20,11 +24,24 @@ Future<void> main() async {
   await cifrasLocais.restaurar();
   final hinosRepo = HinosRepository(service: HinosService());
   await hinosRepo.carregar();
+  // Acorda o acervo de acordes (~40 KB) sem esperar: assim ele entra no cache
+  // do service worker já na primeira visita, mesmo que ninguém toque num
+  // acorde. Fora da web é só uma leitura de asset que ficaria no bundle.
+  unawaited(AcordesService.instancia.carregar());
   runApp(HinariosApp(
     preferencias: preferencias,
     hinosRepository: hinosRepo,
     cifrasLocais: cifrasLocais,
   ));
+  // Depois do primeiro quadro e de uma folga de 3 s (para não disputar banda
+  // com o boot), pede ao service worker o download do app inteiro —
+  // partituras e acordes inclusive. Fora da web é um no-op.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(Future<void>.delayed(
+      const Duration(seconds: 3),
+      solicitarCacheCompleto,
+    ));
+  });
 }
 
 class HinariosApp extends StatelessWidget {
