@@ -64,6 +64,7 @@ flutter:
 
   assets:
     - assets/dados.json
+    - assets/acordes.json
     - assets/partituras/
 
   # An image asset can refer to one or more resolution-specific "variants", see

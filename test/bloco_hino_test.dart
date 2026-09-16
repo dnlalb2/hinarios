@@ -10,6 +10,7 @@ import 'package:hinarios_app/domain/models/hino.dart';
 import 'package:hinarios_app/ui/core/cifras_locais_view_model.dart';
 import 'package:hinarios_app/ui/core/preferencias_view_model.dart';
 import 'package:hinarios_app/ui/core/widgets/bloco_hino.dart';
+import 'package:hinarios_app/ui/features/hino/diagrama_acorde.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -262,6 +263,37 @@ void main() {
             .first
             .left;
     expect(coluna(acorde, 3), coluna(letra, 3));
+  });
+
+  // Tocar num acorde da cifra abre o desenho do violão. O toque é no ACORDE
+  // (não no meio da linha): tapOnText acerta a coluna exata do 'Bm' dentro do
+  // mesmo Text que desenha 'D Bm'.
+  testWidgets('tocar no acorde da cifra abre o diagrama do acorde', (tester) async {
+    await tester.pumpWidget(montar(await vmNovo(), hino));
+    expect(find.text('D Bm'), findsOneWidget); // ainda é o mesmo Text de antes
+
+    await tester.tapOnText(find.textRange.ofSubstring('Bm'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Posições: chords-db (MIT)'), findsOneWidget); // folha aberta
+    expect(tester.widget<Text>(find.byKey(const Key('acorde-titulo'))).data, 'Bm');
+    expect(find.byType(DiagramaAcorde), findsOneWidget);
+  });
+
+  // O acorde tocado é o que está NA TELA: com meio tom acima, o 'Bm' vira 'Cm'
+  // e é o desenho do 'Cm' que abre.
+  testWidgets('acorde transposto abre o diagrama do acorde transposto', (tester) async {
+    final vm = await vmNovo();
+    await tester.pumpWidget(montar(vm, hino));
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pump();
+    expect(find.text('D# Cm'), findsOneWidget);
+
+    await tester.tapOnText(find.textRange.ofSubstring('Cm'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Posições: chords-db (MIT)'), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const Key('acorde-titulo'))).data, 'Cm');
   });
 
   testWidgets('estrela alterna favorito', (tester) async {

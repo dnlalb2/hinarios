@@ -8,6 +8,7 @@ import '../../../domain/use_cases/chordpro.dart';
 import '../../../domain/use_cases/transposicao.dart';
 import '../cifras_locais_view_model.dart';
 import '../preferencias_view_model.dart';
+import 'linha_acordes.dart';
 import '../../features/hino/editor_cifra_view.dart';
 import '../../features/hino/partitura.dart';
 
@@ -159,9 +160,9 @@ class BlocoHino extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (par.acordes != null)
-                Text(
-                  par.acordes!.split(' ').map((a) => transporAcorde(a, shift)).join(' '),
-                  style: estiloAcorde,
+                LinhaAcordes(
+                  texto: par.acordes!.split(' ').map((a) => transporAcorde(a, shift)).join(' '),
+                  estilo: estiloAcorde,
                 ),
               Text(par.texto, style: estiloLetra),
             ],
